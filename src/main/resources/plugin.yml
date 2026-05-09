@@ -1,11 +1,19 @@
 name: XlingranAuth
-version: 1.0
+version: 1.2
 author: shan
 main: com.xlingran.auth.XlingranAuth
-description: Authentication plugin to protect creator identity and prevent theft
+description: 创作者身份展示与认证界面，支持配置与持久化记录
 
 commands:
   xauth:
-    description: Open the authentication GUI
-    usage: /xauth
+    description: 打开认证界面；子命令 reload / help / status
+    usage: /xauth [reload|help|status]
     aliases: [xlingran, auth]
+
+permissions:
+  xlingranauth.use:
+    description: 打开认证界面并完成认证
+    default: true
+  xlingranauth.admin:
+    description: 重载配置与认证数据
+    default: op
