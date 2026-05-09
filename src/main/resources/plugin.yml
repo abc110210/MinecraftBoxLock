@@ -1,0 +1,11 @@
+name: XlingranAuth
+version: 1.0
+author: shan
+main: com.xlingran.auth.XlingranAuth
+description: Authentication plugin to protect creator identity and prevent theft
+
+commands:
+  xauth:
+    description: Open the authentication GUI
+    usage: /xauth
+    aliases: [xlingran, auth]
