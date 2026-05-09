@@ -1,8 +1,7 @@
 package com.xlingran.auth.gui;
 
 import com.xlingran.auth.config.AuthSettings;
-import com.xlingran.auth.util.Texts;
-import org.bukkit.Bukkit;
+import com.xlingran.auth.platform.PlatformBridge;
 import org.bukkit.Material;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
@@ -11,22 +10,19 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.util.ArrayList;
-import java.util.List;
-
 /**
- * 认证箱界面：与多行箱子相同格子数的自定义标题容器（{@code Bukkit.createInventory}）。
- * <p>
- * 使用 1.12 染色玻璃板 data：5=绿、15=黑；功能物品槽位由 {@link AuthSettings} 提供。
+ * 认证箱界面：通过 {@link PlatformBridge}（启动时探测缓存）与 {@link AuthGuiHolder} 适配多版本差异。
  */
 public final class AuthGuiService {
 
     private final JavaPlugin plugin;
     private final AuthSettings settings;
+    private final PlatformBridge platform;
 
-    public AuthGuiService(JavaPlugin plugin, AuthSettings settings) {
+    public AuthGuiService(JavaPlugin plugin, AuthSettings settings, PlatformBridge platform) {
         this.plugin = plugin;
         this.settings = settings;
+        this.platform = platform;
     }
 
     /**
@@ -34,15 +30,16 @@ public final class AuthGuiService {
      */
     public void open(Player player) {
         int size = settings.getGuiSize();
-        Inventory gui = Bukkit.createInventory(null, size, settings.getGuiTitleResolved());
+        AuthGuiHolder holder = new AuthGuiHolder();
+        Inventory gui = platform.createInventory(holder, size, settings.getGuiTitleResolved());
+        holder.attach(gui);
 
-        // STAINED_GLASS_PANE data: 5 = 绿色（背景），15 = 黑色（边框）
-        ItemStack greenGlass = new ItemStack(Material.STAINED_GLASS_PANE, 1, (short) 5);
+        ItemStack greenGlass = AuthMaterials.limeStainedGlassPane(1);
         for (int i = 0; i < size; i++) {
             gui.setItem(i, greenGlass);
         }
 
-        ItemStack blackGlass = new ItemStack(Material.STAINED_GLASS_PANE, 1, (short) 15);
+        ItemStack blackGlass = AuthMaterials.blackStainedGlassPane(1);
         applyBorder(gui, size, blackGlass);
 
         FileConfiguration cfg = plugin.getConfig();
@@ -54,9 +51,6 @@ public final class AuthGuiService {
         player.openInventory(gui);
     }
 
-    /**
-     * 在四边覆盖黑色玻璃：顶行、底行、中间各行最左与最右一格。
-     */
     private static void applyBorder(Inventory gui, int size, ItemStack blackGlass) {
         if (size < 9) {
             return;
@@ -83,29 +77,25 @@ public final class AuthGuiService {
         ItemStack info = new ItemStack(Material.BOOK, 1);
         ItemMeta infoMeta = info.getItemMeta();
         if (infoMeta != null) {
-            infoMeta.setDisplayName(Texts.colorize(cfg.getString("creator.item-name", "&e说明")));
-            infoMeta.setLore(colorLore(cfg.getStringList("creator.lore")));
+            platform.applyItemMetaText(
+                    infoMeta,
+                    cfg.getString("creator.item-name", "&e说明"),
+                    cfg.getStringList("creator.lore"));
             info.setItemMeta(infoMeta);
         }
         return info;
     }
 
-    private static ItemStack namedStack(Material material, FileConfiguration cfg, String nameKey, String nameDef, String loreKey) {
+    private ItemStack namedStack(Material material, FileConfiguration cfg, String nameKey, String nameDef, String loreKey) {
         ItemStack stack = new ItemStack(material, 1);
         ItemMeta meta = stack.getItemMeta();
         if (meta != null) {
-            meta.setDisplayName(Texts.colorize(cfg.getString(nameKey, nameDef)));
-            meta.setLore(colorLore(cfg.getStringList(loreKey)));
+            platform.applyItemMetaText(
+                    meta,
+                    cfg.getString(nameKey, nameDef),
+                    cfg.getStringList(loreKey));
             stack.setItemMeta(meta);
         }
         return stack;
-    }
-
-    private static List<String> colorLore(List<String> lore) {
-        List<String> out = new ArrayList<>();
-        for (String line : lore) {
-            out.add(Texts.colorize(line));
-        }
-        return out;
     }
 }

@@ -2,6 +2,7 @@ package com.xlingran.auth.listener;
 
 import com.xlingran.auth.config.AuthSettings;
 import com.xlingran.auth.config.Messages;
+import com.xlingran.auth.gui.AuthGuiHolder;
 import com.xlingran.auth.storage.AuthenticatedStore;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -9,7 +10,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryClickEvent;
 
 /**
- * 认证箱内点击：通过标题精确匹配本插件界面，防止误伤其它插件菜单。
+ * 认证箱内点击：通过 {@link AuthGuiHolder} 识别本插件界面，避免依赖已弃用的标题字符串比对。
  * <p>
  * 使用 {@link InventoryClickEvent#getRawSlot()} 判断点击的是容器格还是玩家背包（背包格为 {@code >= size}）。
  */
@@ -30,9 +31,7 @@ public final class AuthInventoryListener implements Listener {
         if (event.getInventory() == null || event.getWhoClicked() == null) {
             return;
         }
-        // 标题必须与打开界面时一致（含颜色）；改 config 后须 /xauth reload
-        String title = event.getInventory().getTitle();
-        if (title == null || !title.equals(settings.getGuiTitleResolved())) {
+        if (!(event.getInventory().getHolder() instanceof AuthGuiHolder)) {
             return;
         }
 

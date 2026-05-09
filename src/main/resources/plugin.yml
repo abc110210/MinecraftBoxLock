@@ -1,8 +1,8 @@
 name: XlingranAuth
-version: 1.2
-author: shan
+version: ${project.version}
 main: com.xlingran.auth.XlingranAuth
-description: 创作者身份展示与认证界面，支持配置与持久化记录
+author: shan
+description: 创作者身份展示与认证；适配约 1.12.x–Paper 26.1.x（见 README）
 
 commands:
   xauth:

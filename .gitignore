@@ -8,12 +8,18 @@ release.properties
 dependency-reduced-pom.xml
 buildNumber.properties
 .mvn/timing.properties
-.mvn/wrapper/maven-wrapper.jar
+# 已提交 maven-wrapper.jar 以支持离线构建；若改用仅下载模式可改回忽略
+# .mvn/wrapper/maven-wrapper.jar
 
 # IDE
 .idea/
 *.iml
-.vscode/
+# VS Code：保留仓库内共享的调试/构建配置，其余仍忽略
+.vscode/*
+!.vscode/extensions.json
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/settings.json
 .settings/
 .classpath
 .project
@@ -26,8 +32,12 @@ Thumbs.db
 # Compiled output
 *.class
 *.jar
+!.mvn/wrapper/maven-wrapper.jar
 *.war
 *.ear
 
 # Logs
 *.log
+
+# 本地 Spigot 调试服（与 tasks「Deploy」默认目标目录一致，勿提交）
+.debug-server*/

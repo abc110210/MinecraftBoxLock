@@ -4,6 +4,7 @@ import com.xlingran.auth.command.XauthCommand;
 import com.xlingran.auth.config.AuthSettings;
 import com.xlingran.auth.config.Messages;
 import com.xlingran.auth.gui.AuthGuiService;
+import com.xlingran.auth.platform.PlatformBridge;
 import com.xlingran.auth.listener.AuthInventoryListener;
 import com.xlingran.auth.listener.AuthJoinListener;
 import com.xlingran.auth.storage.AuthenticatedStore;
@@ -39,7 +40,8 @@ public class XlingranAuth extends JavaPlugin {
         authenticatedStore.load();
 
         messages = new Messages(this);
-        guiService = new AuthGuiService(this, settings);
+        PlatformBridge platformBridge = new PlatformBridge(this);
+        guiService = new AuthGuiService(this, settings, platformBridge);
 
         // 命令必须在 plugin.yml 中声明，否则 getCommand 为 null
         PluginCommand cmd = getCommand("xauth");

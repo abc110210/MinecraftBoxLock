@@ -6,16 +6,25 @@
 
     <groupId>com.xlingran</groupId>
     <artifactId>XlingranAuth</artifactId>
-    <version>1.2</version>
+    <version>0.0.1</version>
     <packaging>jar</packaging>
 
     <name>XlingranAuth</name>
     <description>Authentication plugin to protect creator identity - Author: shan</description>
+    <url>https://github.com/Lexcubia/MinecraftBoxLock</url>
+
+    <scm>
+        <connection>scm:git:https://github.com/Lexcubia/MinecraftBoxLock.git</connection>
+        <developerConnection>scm:git:git@github.com:Lexcubia/MinecraftBoxLock.git</developerConnection>
+        <url>https://github.com/Lexcubia/MinecraftBoxLock</url>
+    </scm>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <maven.compiler.source>1.8</maven.compiler.source>
         <maven.compiler.target>1.8</maven.compiler.target>
+        <!-- 编译基线：与最低支持版本一致；运行时可上至 Paper 26.x（PlatformBridge + Material.matchMaterial GUI 材质） -->
+        <spigot.api.version>1.12.2-R0.1-SNAPSHOT</spigot.api.version>
     </properties>
 
     <repositories>
@@ -31,7 +40,7 @@
         <dependency>
             <groupId>org.spigotmc</groupId>
             <artifactId>spigot-api</artifactId>
-            <version>1.12.2-R0.1-SNAPSHOT</version>
+            <version>${spigot.api.version}</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>
@@ -49,7 +58,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.8.1</version>
+                <version>3.13.0</version>
                 <configuration>
                     <source>1.8</source>
                     <target>1.8</target>
