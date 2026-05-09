@@ -12,11 +12,7 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 
-/**
- * XlingranAuth - Authentication plugin to protect creator identity
- * Author: shan
- * Website: www.xlingran.com
- */
+
 public class XlingranAuth extends JavaPlugin implements Listener {
 
     private static final String GUI_TITLE = "§a§lXlingran Auth - Creator: shan";
@@ -47,12 +43,6 @@ public class XlingranAuth extends JavaPlugin implements Listener {
         return true;
     }
 
-    /**
-     * Opens the authentication GUI for the player
-     * Layout: 3 rows x 9 columns
-     * - Outer border: Black Stained Glass
-     * - Inner area: Green Stained Glass
-     */
     public void openAuthGUI(Player player) {
         Inventory gui = Bukkit.createInventory(null, GUI_SIZE, GUI_TITLE);
 
@@ -84,9 +74,6 @@ public class XlingranAuth extends JavaPlugin implements Listener {
         player.openInventory(gui);
     }
 
-    /**
-     * Prevents players from taking items from the GUI
-     */
     @EventHandler
     public void onInventoryClick(InventoryClickEvent event) {
         if (event.getInventory() == null) return;
