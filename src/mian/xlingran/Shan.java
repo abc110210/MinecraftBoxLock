@@ -80,13 +80,12 @@ public class Shan extends JavaPlugin implements Listener {
 	/**
 	 * 监听玩家右键点击事件
 	 * - 非所有者：阻止打开箱子
-	 * - 所有者 Shift+右键：打开 GUI 管理界面
+	 * - 所有者：正常打开箱子
 	 * 
 	 * Action.RIGHT_CLICK_BLOCK 始终检测右键操作，不受玩家按键绑定影响
-	 * player.isSneaking() 检测潜行状态，会随玩家潜行键设置（默认 Shift）改变而改变
 	 */
 	@EventHandler(priority = EventPriority.HIGHEST)
-	public void onPlayerInteract(PlayerInteractEvent event) {
+	public void onPlayerInteractRight(PlayerInteractEvent event) {
 		if (event.getAction() != Action.RIGHT_CLICK_BLOCK) {
 			return;
 		}
@@ -105,13 +104,6 @@ public class Shan extends JavaPlugin implements Listener {
 			return;
 		}
 		
-		// 所有者 Shift+右键 打开 GUI
-		if (ownerUUID.equals(player.getUniqueId()) && player.isSneaking()) {
-			event.setCancelled(true);
-			openGui(player);
-			return;
-		}
-		
 		// 非所有者阻止打开
 		if (!ownerUUID.equals(player.getUniqueId())) {
 			event.setCancelled(true);
@@ -120,8 +112,41 @@ public class Shan extends JavaPlugin implements Listener {
 	}
 	
 	/**
+	 * 监听玩家左键点击事件
+	 * 所有者 Shift+左键 打开 GUI 管理界面
+	 * 
+	 * player.isSneaking() 检测潜行状态，会随玩家潜行键设置（默认 Shift）改变而改变
+	 */
+	@EventHandler(priority = EventPriority.HIGHEST)
+	public void onPlayerInteractLeft(PlayerInteractEvent event) {
+		if (event.getAction() != Action.LEFT_CLICK_BLOCK) {
+			return;
+		}
+		
+		Block block = event.getClickedBlock();
+		if (block == null || !isChest(block.getType())) {
+			return;
+		}
+		
+		Player player = event.getPlayer();
+		String locationKey = getLocationKey(block);
+		UUID ownerUUID = chestOwners.get(locationKey);
+		
+		// 箱子没有主人，不处理
+		if (ownerUUID == null) {
+			return;
+		}
+		
+		// 所有者 Shift+左键 打开 GUI
+		if (ownerUUID.equals(player.getUniqueId()) && player.isSneaking()) {
+			event.setCancelled(true);
+			openGui(player);
+		}
+	}
+	
+	/**
 	 * 监听方块破坏事件，阻止非所有者破坏箱子
-	 * 同时防止所有者在创造模式下通过 Shift+右键 破坏箱子
+	 * 同时防止所有者在创造模式下通过 Shift+左键 破坏箱子
 	 */
 	@EventHandler(priority = EventPriority.HIGHEST)
 	public void onBlockBreak(BlockBreakEvent event) {
@@ -155,6 +180,7 @@ public class Shan extends JavaPlugin implements Listener {
 	
 	/**
 	 * 阻止漏斗对锁定的箱子进行物品传输
+	 * 上锁的箱子默认禁止漏斗输入和输出
 	 */
 	@EventHandler(priority = EventPriority.HIGHEST)
 	public void onInventoryMoveItem(InventoryMoveItemEvent event) {
