@@ -13,8 +13,7 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -141,12 +140,11 @@ public class Shan extends JavaPlugin implements Listener {
 	 * 保存箱子数据到文件
 	 */
 	private void saveChestData() {
-		try {
-			StringBuilder content = new StringBuilder();
+		try (BufferedWriter writer = new BufferedWriter(new FileWriter(dataFile))) {
 			for (Map.Entry<String, UUID> entry : chestOwners.entrySet()) {
-				content.append(entry.getKey()).append("=").append(entry.getValue().toString()).append("\n");
+				writer.write(entry.getKey() + "=" + entry.getValue().toString());
+				writer.newLine();
 			}
-			org.apache.commons.io.FileUtils.writeStringToFile(dataFile, content.toString(), "UTF-8");
 		} catch (IOException e) {
 			getLogger().log(Level.SEVERE, "无法保存箱子数据", e);
 		}
@@ -160,9 +158,9 @@ public class Shan extends JavaPlugin implements Listener {
 			return;
 		}
 		
-		try {
-			java.util.List<String> lines = org.apache.commons.io.FileUtils.readLines(dataFile, "UTF-8");
-			for (String line : lines) {
+		try (BufferedReader reader = new BufferedReader(new FileReader(dataFile))) {
+			String line;
+			while ((line = reader.readLine()) != null) {
 				if (line.contains("=")) {
 					String[] parts = line.split("=", 2);
 					if (parts.length == 2) {
