@@ -27,13 +27,13 @@ public class ShanGui {
 	private static final int GUI_ROWS = 3;      // 箱子管理 3行
 	private static final int SINGLE_ROWS = 3;   // 单独权限设置 3行
 	private static final int PERMISSION_ADD_ROWS = 6;    // 54格 (最大)
-	private static final int PERMISSION_REMOVE_ROWS = 7; // 63格 (带分页)
+	private static final int PERMISSION_REMOVE_ROWS = 6; // 54格 (带分页)
 	private static final int GLOBAL_ROWS = 3;   // 全局权限设置 3行
 	// 分页常量
-	private static final int PLAYERS_PER_PAGE = 35; // 每页显示玩家数量 (5行×7列)
-	private static final int PREV_PAGE_SLOT = 56;   // 上一页按钮 (第57格)
-	private static final int NEXT_PAGE_SLOT = 60;   // 下一页按钮 (第61格)
-	private static final int RETURN_SLOT = 62;      // 返回按钮 (第63格)
+	private static final int PLAYERS_PER_PAGE = 33; // 每页显示玩家数量 (6行GUI, 最后一行3个导航按钮)
+	private static final int PREV_PAGE_SLOT = 48;   // 上一页按钮 (第49格)
+	private static final int NEXT_PAGE_SLOT = 50;   // 下一页按钮 (第51格)
+	private static final int RETURN_SLOT = 53;      // 返回按钮 (第54格)
 	
 	// 打开箱子管理GUI界面 (3行)
 	public static void openBoxManageGui(Player player, Block chestBlock, Map<String, UUID> chestOwners) {
@@ -319,7 +319,7 @@ public class ShanGui {
 		return slots;
 	}
 	
-	// 获取分页内部格子（7行用，排除第57/61/63格）
+	// 获取分页内部格子（6行用，排除第49/51/54格）
 	private static List<Integer> getInnerSlotsPaginated(int rows) {
 		List<Integer> slots = new ArrayList<>();
 		int cols = 9;
