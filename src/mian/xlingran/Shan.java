@@ -25,28 +25,24 @@ public class Shan extends JavaPlugin implements Listener {
 	
 	// 存储箱子位置与所有者的映射关系
 	private Map<String, UUID> chestOwners = new HashMap<>();
-	// 存储箱子位置与有权限玩家的映射关系
 	private Map<String, Set<UUID>> chestPermissions = new HashMap<>();
 	private File dataFile;
 	
-	// 临时存储正在打开 GUI 的玩家，防止触发破坏事件
 	private Set<UUID> guiOpeningPlayers = new HashSet<>();
-	// 临时存储玩家打开的箱子位置
 	private Map<UUID, String> playerOpenedChests = new HashMap<>();
-	// 标记正在切换 GUI 的玩家（防止 InventoryCloseEvent 清除数据）
 	private Set<UUID> switchingGuiPlayers = new HashSet<>();
 	
 	@Override
 	public void onEnable() {
 		Bukkit.getPluginManager().registerEvents(this, this);
 		
-		// 初始化数据文件
+		// 初始化
 		dataFile = new File(getDataFolder(), "chests.yml");
 		if (!getDataFolder().exists()) {
 			getDataFolder().mkdirs();
 		}
 		
-		// 加载已保存的箱子数据
+		// 加载数据
 		loadChestData();
 		
 		Bukkit.getConsoleSender().sendMessage("§a欢迎使用 §b箱子锁 §a插件,交流群: 943446220");
@@ -54,14 +50,12 @@ public class Shan extends JavaPlugin implements Listener {
 	
 	@Override
 	public void onDisable() {
-		// 保存箱子数据
+		// 保存
 		saveChestData();
 		Bukkit.getConsoleSender().sendMessage("§a欢迎使用 §b箱子锁 §a插件,交流群: 943446220");
 	}
 	
-	/**
-	 * 监听箱子放置事件，自动记录箱子所有者
-	 */
+	//监听防止事件
 	@EventHandler
 	public void onBlockPlace(BlockPlaceEvent event) {
 		Block block = event.getBlock();
@@ -74,11 +68,8 @@ public class Shan extends JavaPlugin implements Listener {
 		}
 	}
 	
-	/**
-	 * 监听玩家右键点击事件
-	 * - 非所有者且无权限：阻止打开箱子
-	 * - 所有者或有权限：正常打开箱子
-	 */
+
+	// 判断玩家是否可以打开
 	@EventHandler(priority = EventPriority.HIGHEST)
 	public void onPlayerInteractRight(PlayerInteractEvent event) {
 		if (event.getAction() != Action.RIGHT_CLICK_BLOCK) {
@@ -106,11 +97,8 @@ public class Shan extends JavaPlugin implements Listener {
 			}
 		}
 	}
-	
-	/**
-	 * 监听玩家左键点击事件
-	 * 所有者 Shift+左键 打开 GUI 管理界面
-	 */
+
+	// 快捷打开Gui界面
 	@EventHandler(priority = EventPriority.HIGHEST)
 	public void onPlayerInteractLeft(PlayerInteractEvent event) {
 		if (event.getAction() != Action.LEFT_CLICK_BLOCK) {
@@ -136,9 +124,7 @@ public class Shan extends JavaPlugin implements Listener {
 		}
 	}
 	
-	/**
-	 * 监听方块破坏事件，阻止非所有者破坏箱子
-	 */
+	// 破坏事件
 	@EventHandler(priority = EventPriority.HIGHEST)
 	public void onBlockBreak(BlockBreakEvent event) {
 		Block block = event.getBlock();
@@ -166,9 +152,7 @@ public class Shan extends JavaPlugin implements Listener {
 		}
 	}
 	
-	/**
-	 * 阻止漏斗对锁定的箱子进行物品传输
-	 */
+	// 漏斗相关
 	@EventHandler(priority = EventPriority.HIGHEST)
 	public void onInventoryMoveItem(InventoryMoveItemEvent event) {
 		if (isLockedChest(event.getSource())) {
@@ -181,9 +165,7 @@ public class Shan extends JavaPlugin implements Listener {
 		}
 	}
 	
-	/**
-	 * 检查容器是否为锁定的箱子
-	 */
+	// 判断是否上锁
 	private boolean isLockedChest(Inventory inventory) {
 		if (inventory == null || inventory.getHolder() == null) {
 			return false;
@@ -213,9 +195,6 @@ public class Shan extends JavaPlugin implements Listener {
 		return chestOwners.containsKey(locationKey);
 	}
 	
-	/**
-	 * 阻止玩家在 GUI 中移动/取出物品
-	 */
 	@EventHandler
 	public void onInventoryClick(InventoryClickEvent event) {
 		if (event.getView() == null) {
@@ -236,7 +215,6 @@ public class Shan extends JavaPlugin implements Listener {
 			return;
 		}
 		
-		// 箱子管理 GUI
 		if (ShanGui.isBoxManageGui(title)) {
 			event.setCancelled(true);
 			if (slot == 10) {
@@ -246,10 +224,9 @@ public class Shan extends JavaPlugin implements Listener {
 				ShanGui.handleBoxManageClick(player, slot, chestBlock, chestOwners);
 			}
 		}
-		// 单独权限设置 GUI
 		else if (ShanGui.isSinglePermissionGui(title)) {
 			event.setCancelled(true);
-			if (slot == 11 || slot == 15) {
+			if (slot == 11 || slot == 15 || slot == 26) {
 				switchingGuiPlayers.add(player.getUniqueId());
 				final String loc = chestLocation;
 				final int s = slot;
@@ -262,7 +239,6 @@ public class Shan extends JavaPlugin implements Listener {
 				}, 1L);
 			}
 		}
-		// 权限设置(单独) GUI - 添加权限
 		else if (ShanGui.isPermissionAddGui(title)) {
 			event.setCancelled(true);
 			boolean closed = ShanGui.handlePermissionAddClick(player, slot, chestBlock, chestOwners, chestPermissions);
@@ -270,7 +246,6 @@ public class Shan extends JavaPlugin implements Listener {
 				saveChestData();
 			}
 		}
-		// 取消权限(单独) GUI - 移除权限
 		else if (ShanGui.isPermissionRemoveGui(title)) {
 			event.setCancelled(true);
 			boolean closed = ShanGui.handlePermissionRemoveClick(player, slot, chestBlock, chestOwners, chestPermissions);
@@ -279,10 +254,8 @@ public class Shan extends JavaPlugin implements Listener {
 			}
 		}
 	}
-	
-	/**
-	 * 监听 GUI 关闭事件
-	 */
+
+	// 关闭事件 oi oi oi
 	@EventHandler
 	public void onInventoryClose(InventoryCloseEvent event) {
 		if (event.getView() == null) {
@@ -299,9 +272,9 @@ public class Shan extends JavaPlugin implements Listener {
 		
 		Player player = (Player) event.getPlayer();
 		
-		// 如果正在切换 GUI，不清除数据（1 tick 后新 GUI 会打开）
+		// 延时器
 		if (switchingGuiPlayers.contains(player.getUniqueId())) {
-			// 延迟 1 tick 清除标记，等待新 GUI 打开完成
+			
 			Bukkit.getScheduler().runTaskLater(this, () -> {
 				switchingGuiPlayers.remove(player.getUniqueId());
 			}, 1L);
@@ -311,9 +284,6 @@ public class Shan extends JavaPlugin implements Listener {
 		playerOpenedChests.remove(player.getUniqueId());
 	}
 	
-	/**
-	 * 打开箱子管理 GUI
-	 */
 	private void openGui(Player player, Block chestBlock) {
 		guiOpeningPlayers.add(player.getUniqueId());
 		playerOpenedChests.put(player.getUniqueId(), getLocationKey(chestBlock));
@@ -325,9 +295,7 @@ public class Shan extends JavaPlugin implements Listener {
 		ShanGui.openBoxManageGui(player, chestBlock, chestOwners);
 	}
 	
-	/**
-	 * 从位置字符串解析 Block 对象
-	 */
+	// 字符串 Block
 	private Block parseBlockLocation(Player player, String locationKey) {
 		String[] parts = locationKey.split(":");
 		if (parts.length != 2) {
@@ -354,17 +322,13 @@ public class Shan extends JavaPlugin implements Listener {
 		}
 	}
 	
-	/**
-	 * 判断是否为箱子类型
-	 */
+	// 箱子类型
 	private boolean isChest(Material material) {
 		return material == Material.CHEST || 
 		       material == Material.TRAPPED_CHEST;
 	}
 	
-	/**
-	 * 获取方块位置的唯一标识
-	 */
+	//箱子位置
 	private String getLocationKey(Block block) {
 		return block.getWorld().getName() + ":" + 
 		       block.getX() + "," + 
@@ -372,9 +336,7 @@ public class Shan extends JavaPlugin implements Listener {
 		       block.getZ();
 	}
 	
-	/**
-	 * 保存箱子数据到文件
-	 */
+	// 写入到配置文件
 	private void saveChestData() {
 		try (BufferedWriter writer = new BufferedWriter(new FileWriter(dataFile))) {
 			for (Map.Entry<String, UUID> entry : chestOwners.entrySet()) {
@@ -393,9 +355,7 @@ public class Shan extends JavaPlugin implements Listener {
 		}
 	}
 	
-	/**
-	 * 从文件加载箱子数据
-	 */
+	// 加载配置文件
 	private void loadChestData() {
 		if (!dataFile.exists()) {
 			return;
