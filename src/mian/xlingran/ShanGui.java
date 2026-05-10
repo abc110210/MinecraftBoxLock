@@ -457,7 +457,7 @@ public class ShanGui {
 	}
 	
 	// 删除全局权限
-	public static boolean handleGlobalRemoveClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Set<UUID>> globalPermissions, Map<String, Set<UUID>> chestPermissions, int currentPage) {
+	public static boolean handleGlobalRemoveClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Set<UUID>> globalPermissions, Map<String, Set<UUID>> chestPermissions, Map<UUID, Integer> playerGuiPages, int currentPage) {
 		UUID ownerUUID = chestOwners.get(getLocationKey(chestBlock));
 		if (ownerUUID == null) {
 			return false;
@@ -470,6 +470,7 @@ public class ShanGui {
 		
 		// 返回按钮
 		if (slot == RETURN_SLOT) {
+			playerGuiPages.remove(player.getUniqueId());
 			openGlobalPermissionGui(player, chestBlock, chestOwners);
 			return false;
 		}
@@ -477,6 +478,7 @@ public class ShanGui {
 		// 上一页
 		if (slot == PREV_PAGE_SLOT) {
 			int newPage = Math.max(0, currentPage - 1);
+			playerGuiPages.put(player.getUniqueId(), newPage);
 			openGlobalRemoveGui(player, chestBlock, chestOwners, globalPermissions, newPage);
 			return false;
 		}
@@ -485,6 +487,7 @@ public class ShanGui {
 		if (slot == NEXT_PAGE_SLOT) {
 			int totalPages = Math.max(1, (int) Math.ceil((double) authorizedPlayers.size() / PLAYERS_PER_PAGE));
 			int newPage = Math.min(totalPages - 1, currentPage + 1);
+			playerGuiPages.put(player.getUniqueId(), newPage);
 			openGlobalRemoveGui(player, chestBlock, chestOwners, globalPermissions, newPage);
 			return false;
 		}
@@ -519,6 +522,7 @@ public class ShanGui {
 						// 刷新当前页面
 						int totalPages = Math.max(1, (int) Math.ceil((double) authorizedPlayers.size() / PLAYERS_PER_PAGE));
 						int page = Math.min(currentPage, totalPages - 1);
+						playerGuiPages.put(player.getUniqueId(), page);
 						openGlobalRemoveGui(player, chestBlock, chestOwners, globalPermissions, page);
 						return true;
 					}
@@ -560,7 +564,7 @@ public class ShanGui {
 	}
 	
 	// 移除权限
-	public static boolean handlePermissionRemoveClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<String, Set<UUID>> chestPermissions, int currentPage) {
+	public static boolean handlePermissionRemoveClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<String, Set<UUID>> chestPermissions, Map<UUID, Integer> playerGuiPages, int currentPage) {
 		String locationKey = getLocationKey(chestBlock);
 		Set<UUID> allowedPlayers = chestPermissions.get(locationKey);
 		
@@ -570,6 +574,7 @@ public class ShanGui {
 		
 		// 返回按钮
 		if (slot == RETURN_SLOT) {
+			playerGuiPages.remove(player.getUniqueId());
 			openSinglePermissionGui(player, chestBlock, chestOwners);
 			return false;
 		}
@@ -577,6 +582,7 @@ public class ShanGui {
 		// 上一页
 		if (slot == PREV_PAGE_SLOT) {
 			int newPage = Math.max(0, currentPage - 1);
+			playerGuiPages.put(player.getUniqueId(), newPage);
 			openPermissionRemoveGui(player, chestBlock, chestOwners, chestPermissions, newPage);
 			return false;
 		}
@@ -585,6 +591,7 @@ public class ShanGui {
 		if (slot == NEXT_PAGE_SLOT) {
 			int totalPages = Math.max(1, (int) Math.ceil((double) allowedPlayers.size() / PLAYERS_PER_PAGE));
 			int newPage = Math.min(totalPages - 1, currentPage + 1);
+			playerGuiPages.put(player.getUniqueId(), newPage);
 			openPermissionRemoveGui(player, chestBlock, chestOwners, chestPermissions, newPage);
 			return false;
 		}
@@ -605,6 +612,7 @@ public class ShanGui {
 						// 刷新当前页面
 						int totalPages = Math.max(1, (int) Math.ceil((double) allowedPlayers.size() / PLAYERS_PER_PAGE));
 						int page = Math.min(currentPage, totalPages - 1);
+						playerGuiPages.put(player.getUniqueId(), page);
 						openPermissionRemoveGui(player, chestBlock, chestOwners, chestPermissions, page);
 						return true;
 					}

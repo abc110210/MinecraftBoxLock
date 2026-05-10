@@ -36,6 +36,7 @@ public class Shan extends JavaPlugin implements Listener {
 	private Set<UUID> guiOpeningPlayers = new HashSet<>();
 	private Map<UUID, String> playerOpenedChests = new HashMap<>();
 	private Set<UUID> switchingGuiPlayers = new HashSet<>();
+	private Map<UUID, Integer> playerGuiPages = new HashMap<>();
 	
 	@Override
 	public void onEnable() {
@@ -286,7 +287,8 @@ public class Shan extends JavaPlugin implements Listener {
 		}
 		else if (ShanGui.isGlobalRemoveGui(title)) {
 			event.setCancelled(true);
-			boolean closed = ShanGui.handleGlobalRemoveClick(player, slot, chestBlock, chestOwners, globalPermissions, chestPermissions);
+			int currentPage = playerGuiPages.getOrDefault(player.getUniqueId(), 0);
+			boolean closed = ShanGui.handleGlobalRemoveClick(player, slot, chestBlock, chestOwners, globalPermissions, chestPermissions, playerGuiPages, currentPage);
 			if (closed) {
 				saveChestData();
 			}
@@ -323,7 +325,8 @@ public class Shan extends JavaPlugin implements Listener {
 					switchingGuiPlayers.remove(player.getUniqueId());
 				}, 2L);
 			} else {
-				boolean closed = ShanGui.handlePermissionRemoveClick(player, slot, chestBlock, chestOwners, chestPermissions);
+				int currentPage = playerGuiPages.getOrDefault(player.getUniqueId(), 0);
+				boolean closed = ShanGui.handlePermissionRemoveClick(player, slot, chestBlock, chestOwners, chestPermissions, playerGuiPages, currentPage);
 				if (closed) {
 					saveChestData();
 				}
