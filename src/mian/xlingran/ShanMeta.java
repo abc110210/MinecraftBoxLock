@@ -278,7 +278,7 @@ public class ShanMeta {
 			if (cacheFile.exists()) {
 				cacheFile.delete();
 			}
-		} catch (IOException | ClassCastException e) {
+		} catch (IOException | ClassCastException | java.io.InvalidClassException e) {
 			plugin.getLogger().log(Level.WARNING, "无法加载头颅缓存，将重建缓存", e);
 			headCache.clear();
 			if (cacheFile.exists()) {
