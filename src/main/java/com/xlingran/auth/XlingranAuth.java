@@ -1,86 +1,102 @@
 package com.xlingran.auth;
 
-import org.bukkit.Bukkit;
-import org.bukkit.Material;
-import org.bukkit.command.Command;
-import org.bukkit.command.CommandSender;
+import com.xlingran.auth.command.XauthCommand;
+import com.xlingran.auth.config.AuthSettings;
+import com.xlingran.auth.config.Messages;
+import com.xlingran.auth.gui.AuthGuiService;
+import com.xlingran.auth.platform.PlatformBridge;
+import com.xlingran.auth.listener.AuthInventoryListener;
+import com.xlingran.auth.listener.AuthJoinListener;
+import com.xlingran.auth.storage.AuthenticatedStore;
+import org.bukkit.command.PluginCommand;
 import org.bukkit.entity.Player;
-import org.bukkit.event.EventHandler;
-import org.bukkit.event.Listener;
-import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 
+/**
+ * XlingranAuth 插件主类。
+ * <p>
+ * 职责：加载默认配置、初始化各模块、注册命令与事件监听器。
+ * 具体业务分散在 {@code config} / {@code storage} / {@code gui} / {@code command} / {@code listener} 包中。
+ */
+public class XlingranAuth extends JavaPlugin {
 
-public class XlingranAuth extends JavaPlugin implements Listener {
-
-    private static final String GUI_TITLE = "§a§lXlingran Auth - Creator: shan";
-    private static final int GUI_ROWS = 3;
-    private static final int GUI_SIZE = GUI_ROWS * 9; // 27 slots
+    /** 界面标题、槽位、进服是否弹窗等运行时配置（随 reload 更新）。 */
+    private AuthSettings settings;
+    /** 已认证玩家 UUID，与 {@code authenticated.yml} 同步。 */
+    private AuthenticatedStore authenticatedStore;
+    /** 认证箱 UI 的构建与打开。 */
+    private AuthGuiService guiService;
+    /** 从 {@code config.yml} 取文案并转换颜色代码。 */
+    private Messages messages;
 
     @Override
     public void onEnable() {
+        saveDefaultConfig();
+
+        settings = new AuthSettings();
+        settings.reload(getConfig());
+
+        authenticatedStore = new AuthenticatedStore(this);
+        authenticatedStore.load();
+
+        messages = new Messages(this);
+        PlatformBridge platformBridge = new PlatformBridge(this);
+        guiService = new AuthGuiService(this, settings, platformBridge);
+
+        // 命令必须在 plugin.yml 中声明，否则 getCommand 为 null
+        PluginCommand cmd = getCommand("xauth");
+        if (cmd != null) {
+            cmd.setExecutor(new XauthCommand(this, settings, authenticatedStore, guiService, messages));
+        } else {
+            getLogger().warning("Command 'xauth' missing from plugin.yml; commands will not work.");
+        }
+
+        getServer().getPluginManager().registerEvents(new AuthInventoryListener(settings, authenticatedStore, messages), this);
+        getServer().getPluginManager().registerEvents(new AuthJoinListener(this, settings, authenticatedStore, guiService), this);
+
         getLogger().info("XlingranAuth has been enabled!");
         getLogger().info("Author: shan | Website: www.xlingran.com");
-        getServer().getPluginManager().registerEvents(this, this);
     }
 
     @Override
     public void onDisable() {
+        // 确保进服后点选认证的数据在卸载前写入磁盘
+        if (authenticatedStore != null) {
+            authenticatedStore.save();
+        }
         getLogger().info("XlingranAuth has been disabled!");
     }
 
-    @Override
-    public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!(sender instanceof Player)) {
-            sender.sendMessage("§cThis command can only be used by players!");
-            return true;
-        }
-
-        Player player = (Player) sender;
-        openAuthGUI(player);
-        return true;
+    /** @return 当前 GUI 与行为相关配置快照，供扩展读取 */
+    public AuthSettings getSettings() {
+        return settings;
     }
 
+    /** @return 认证数据存储，可供其它插件查询或配合自定义逻辑 */
+    public AuthenticatedStore getAuthenticatedStore() {
+        return authenticatedStore;
+    }
+
+    /** @return 认证界面服务，供外部在合适时机主动弹出界面 */
+    public AuthGuiService getGuiService() {
+        return guiService;
+    }
+
+    /**
+     * 查询玩家是否已在本次服务周期内完成认证（数据来自内存 + 持久化文件）。
+     * 供外部插件或脚本调用，与早期单类版本 API 保持一致。
+     */
+    public boolean isAuthenticated(Player player) {
+        return authenticatedStore != null && authenticatedStore.isAuthenticated(player);
+    }
+
+    /**
+     * 直接为玩家打开认证箱界面。
+     * 不检查权限、不拦截已认证玩家；若需与玩家输入 {@code /xauth} 行为一致，请自行判断。
+     */
     public void openAuthGUI(Player player) {
-        Inventory gui = Bukkit.createInventory(null, GUI_SIZE, GUI_TITLE);
-
-        // Fill the entire GUI with green glass first
-        ItemStack greenGlass = new ItemStack(Material.STAINED_GLASS_PANE, 1, (short) 5); // Green stained glass pane
-
-        for (int i = 0; i < GUI_SIZE; i++) {
-            gui.setItem(i, greenGlass);
-        }
-
-        // Set black glass border (outer ring)
-        ItemStack blackGlass = new ItemStack(Material.STAINED_GLASS_PANE, 1, (short) 15); // Black stained glass pane
-
-        // Top row (slots 0-8)
-        for (int i = 0; i < 9; i++) {
-            gui.setItem(i, blackGlass);
-        }
-
-        // Bottom row (slots 18-26)
-        for (int i = 18; i < 27; i++) {
-            gui.setItem(i, blackGlass);
-        }
-
-        // Left and right columns (middle row)
-        gui.setItem(9, blackGlass);   // Left column, second row
-        gui.setItem(17, blackGlass);  // Right column, second row
-
-        // Open the GUI for the player
-        player.openInventory(gui);
-    }
-
-    @EventHandler
-    public void onInventoryClick(InventoryClickEvent event) {
-        if (event.getInventory() == null) return;
-
-        String title = event.getInventory().getTitle();
-        if (title != null && title.equals(GUI_TITLE)) {
-            event.setCancelled(true);
+        if (guiService != null) {
+            guiService.open(player);
         }
     }
 }

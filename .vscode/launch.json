@@ -1,0 +1,49 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "java",
+      "name": "一键: 构建部署 + 起服并附加 (JDWP)",
+      "request": "attach",
+      "hostName": "127.0.0.1",
+      "port": 5005,
+      "projectName": "XlingranAuth",
+      "preLaunchTask": "一键: 构建+部署+后台启动调试服 (JDWP 5005)"
+    },
+    {
+      "type": "java",
+      "name": "先起服再附加 (无 Maven, JDWP)",
+      "request": "attach",
+      "hostName": "127.0.0.1",
+      "port": 5005,
+      "projectName": "XlingranAuth",
+      "preLaunchTask": "仅启动调试服 (JDWP 5005, 后台)"
+    },
+    {
+      "type": "java",
+      "name": "附加到 Minecraft 服务端 (JDWP)",
+      "request": "attach",
+      "hostName": "127.0.0.1",
+      "port": 5005,
+      "projectName": "XlingranAuth"
+    },
+    {
+      "type": "java",
+      "name": "附加到服务端 (先 Maven package)",
+      "request": "attach",
+      "hostName": "127.0.0.1",
+      "port": 5005,
+      "projectName": "XlingranAuth",
+      "preLaunchTask": "Maven: package (插件)"
+    },
+    {
+      "type": "java",
+      "name": "附加并部署 JAR 到 .debug-server/plugins",
+      "request": "attach",
+      "hostName": "127.0.0.1",
+      "port": 5005,
+      "projectName": "XlingranAuth",
+      "preLaunchTask": "Maven: package 并部署到 .debug-server"
+    }
+  ]
+}

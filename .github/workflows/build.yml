@@ -3,8 +3,10 @@ name: Build Plugin
 on:
   push:
     branches: [ main, master ]
+    tags: [ "v*" ]
   pull_request:
     branches: [ main, master ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -20,11 +22,11 @@ jobs:
           distribution: 'temurin'
           cache: maven
 
-      - name: Build with Maven
-        run: mvn clean package -B
+      - name: Build with Maven Wrapper
+        run: chmod +x mvnw && ./mvnw -B clean package -DskipTests
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: XlingranAuth
-          path: target/XlingranAuth-1.0.jar
+          name: XlingranAuth-jar
+          path: target/XlingranAuth-*.jar

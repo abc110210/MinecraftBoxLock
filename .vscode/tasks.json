@@ -1,0 +1,132 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Maven: package (插件)",
+      "type": "shell",
+      "windows": {
+        "options": { "cwd": "${workspaceFolder}" },
+        "command": ".\\mvnw.cmd",
+        "args": ["clean", "package", "-B", "-q"]
+      },
+      "linux": {
+        "options": { "cwd": "${workspaceFolder}" },
+        "command": "./mvnw",
+        "args": ["clean", "package", "-B", "-q"]
+      },
+      "osx": {
+        "options": { "cwd": "${workspaceFolder}" },
+        "command": "./mvnw",
+        "args": ["clean", "package", "-B", "-q"]
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": ["$javac"]
+    },
+    {
+      "label": "Deploy: 复制 JAR 到 .debug-server/plugins",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "$d = Join-Path '${workspaceFolder}' '.debug-server/plugins'; New-Item -ItemType Directory -Force -Path $d | Out-Null; Copy-Item -Force (Join-Path '${workspaceFolder}' 'target/XlingranAuth-*.jar') -Destination $d"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "silent",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "Maven: package 并部署到 .debug-server",
+      "type": "shell",
+      "command": "echo",
+      "args": ["[XlingranAuth] package + deploy 已完成"],
+      "dependsOrder": "sequence",
+      "dependsOn": ["Maven: package (插件)", "Deploy: 复制 JAR 到 .debug-server/plugins"],
+      "problemMatcher": [],
+      "group": "build",
+      "presentation": { "reveal": "silent", "panel": "shared" }
+    },
+    {
+      "label": "仅启动调试服 (JDWP 5005, 后台)",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/scripts/start-debug-server.ps1",
+        "-WorkspaceRoot",
+        "${workspaceFolder}"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "xlingran-mc-jdwp",
+        "pattern": {
+          "regexp": "a^",
+          "message": 1
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "(\\[.*INFO\\]: Done \\([0-9\\.]+s\\)!|__DEBUG_SERVER_READY__)"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": true
+      }
+    },
+    {
+      "label": "一键: 构建+部署+后台启动调试服 (JDWP 5005)",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-NoProfile",
+        "-ExecutionPolicy",
+        "Bypass",
+        "-File",
+        "${workspaceFolder}/scripts/start-debug-server.ps1",
+        "-WorkspaceRoot",
+        "${workspaceFolder}",
+        "-Build",
+        "-Deploy"
+      ],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "xlingran-mc-jdwp",
+        "pattern": {
+          "regexp": "a^",
+          "message": 1
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".",
+          "endsPattern": "(\\[.*INFO\\]: Done \\([0-9\\.]+s\\)!|__DEBUG_SERVER_READY__)"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": true
+      }
+    }
+  ]
+}
