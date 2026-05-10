@@ -251,7 +251,15 @@ public class Shan extends JavaPlugin implements Listener {
 			event.setCancelled(true);
 			if (slot == 11 || slot == 15) {
 				switchingGuiPlayers.add(player.getUniqueId());
-				ShanGui.handleSinglePermissionClick(player, slot, chestBlock, chestOwners, chestPermissions);
+				final String loc = chestLocation;
+				final int s = slot;
+				Bukkit.getScheduler().runTaskLater(this, () -> {
+					Block cb = parseBlockLocation(player, loc);
+					if (cb != null) {
+						ShanGui.handleSinglePermissionClick(player, s, cb, chestOwners, chestPermissions);
+					}
+					switchingGuiPlayers.remove(player.getUniqueId());
+				}, 1L);
 			}
 		}
 		// 权限设置(单独) GUI - 添加权限
