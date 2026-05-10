@@ -236,21 +236,47 @@ public class Shan extends JavaPlugin implements Listener {
 						ShanGui.handleSinglePermissionClick(player, s, cb, chestOwners, chestPermissions);
 					}
 					switchingGuiPlayers.remove(player.getUniqueId());
-				}, 1L);
+				}, 2L);
 			}
 		}
 		else if (ShanGui.isPermissionAddGui(title)) {
 			event.setCancelled(true);
-			boolean closed = ShanGui.handlePermissionAddClick(player, slot, chestBlock, chestOwners, chestPermissions);
-			if (closed) {
-				saveChestData();
+			// 检查是否点击返回按钮（槽位53）
+			if (slot == 53) {
+				switchingGuiPlayers.add(player.getUniqueId());
+				final String loc = chestLocation;
+				Bukkit.getScheduler().runTaskLater(this, () -> {
+					Block cb = parseBlockLocation(player, loc);
+					if (cb != null) {
+						ShanGui.openSinglePermissionGui(player, cb, chestOwners);
+					}
+					switchingGuiPlayers.remove(player.getUniqueId());
+				}, 2L);
+			} else {
+				boolean closed = ShanGui.handlePermissionAddClick(player, slot, chestBlock, chestOwners, chestPermissions);
+				if (closed) {
+					saveChestData();
+				}
 			}
 		}
 		else if (ShanGui.isPermissionRemoveGui(title)) {
 			event.setCancelled(true);
-			boolean closed = ShanGui.handlePermissionRemoveClick(player, slot, chestBlock, chestOwners, chestPermissions);
-			if (closed) {
-				saveChestData();
+			// 检查是否点击返回按钮（槽位53）
+			if (slot == 53) {
+				switchingGuiPlayers.add(player.getUniqueId());
+				final String loc = chestLocation;
+				Bukkit.getScheduler().runTaskLater(this, () -> {
+					Block cb = parseBlockLocation(player, loc);
+					if (cb != null) {
+						ShanGui.openSinglePermissionGui(player, cb, chestOwners);
+					}
+					switchingGuiPlayers.remove(player.getUniqueId());
+				}, 2L);
+			} else {
+				boolean closed = ShanGui.handlePermissionRemoveClick(player, slot, chestBlock, chestOwners, chestPermissions);
+				if (closed) {
+					saveChestData();
+				}
 			}
 		}
 	}
