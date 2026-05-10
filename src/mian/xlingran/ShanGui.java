@@ -17,26 +17,33 @@ public class ShanGui {
 	
 	// GUI名称
 	private static final String BOX_MANAGE_TITLE = "§e箱子管理";
-	private static final String SINGLE_PERMISSION_TITLE = "§a单独权限设置";
+	private static final String SINGLE_PERMISSION_TITLE = "§b单独权限设置";
 	private static final String PERMISSION_ADD_TITLE = "§a权限设置(单独)";
 	private static final String PERMISSION_REMOVE_TITLE = "§c取消权限(单独)";
+	private static final String GLOBAL_PERMISSION_TITLE = "§a全局权限设置";
+	private static final String GLOBAL_ADD_TITLE = "§a添加全局权限";
+	private static final String GLOBAL_REMOVE_TITLE = "§c删除全局权限";
 	// GUI行数
-	private static final int GUI_ROWS = 4;      // 箱子管理 4行
+	private static final int GUI_ROWS = 3;      // 箱子管理 3行
 	private static final int SINGLE_ROWS = 3;   // 单独权限设置 3行
 	private static final int PERMISSION_ADD_ROWS = 6;    // 54格 (最大)
 	private static final int PERMISSION_REMOVE_ROWS = 6; // 54格 (最大)
+	private static final int GLOBAL_ROWS = 3;   // 全局权限设置 3行
 	
-	// 打开箱子管理GUI界面 (4行)
+	// 打开箱子管理GUI界面 (3行)
 	public static void openBoxManageGui(Player player, Block chestBlock, Map<String, UUID> chestOwners) {
 		Inventory gui = Bukkit.createInventory(null, GUI_ROWS * 9, BOX_MANAGE_TITLE);
 		
 		ItemStack blackGlass = createItem(Material.BLACK_STAINED_GLASS_PANE, " ");
-		for (int i = 0; i < 36; i++) {
+		for (int i = 0; i < 27; i++) {
 			gui.setItem(i, blackGlass);
 		}
 		
 		ItemStack ownerHead = createPlayerHead(chestBlock, chestOwners);
 		gui.setItem(10, ownerHead);
+		
+		ItemStack wheat = createItem(Material.WHEAT, "§b全局权限设置");
+		gui.setItem(12, wheat);
 		
 		ItemStack chest = createItem(Material.CHEST, "§9锁定开关");
 		gui.setItem(14, chest);
@@ -64,6 +71,95 @@ public class ShanGui {
 		
 		ItemStack returnButton = createItem(Material.WHITE_STAINED_GLASS_PANE, "§8返回");
 		gui.setItem(26, returnButton);
+		
+		player.openInventory(gui);
+	}
+	
+	// 打开全局权限设置GUI (3行)
+	public static void openGlobalPermissionGui(Player player, Block chestBlock, Map<String, UUID> chestOwners) {
+		Inventory gui = Bukkit.createInventory(null, GLOBAL_ROWS * 9, GLOBAL_PERMISSION_TITLE);
+		
+		ItemStack blackGlass = createItem(Material.BLACK_STAINED_GLASS_PANE, " ");
+		for (int i = 0; i < 27; i++) {
+			gui.setItem(i, blackGlass);
+		}
+		
+		ItemStack boneMeal = createItem(Material.BONE_MEAL, "§a添加全局权限");
+		gui.setItem(12, boneMeal);
+		
+		ItemStack feather = createItem(Material.FEATHER, "§c删除全局权限");
+		gui.setItem(16, feather);
+		
+		ItemStack returnButton = createItem(Material.WHITE_STAINED_GLASS_PANE, "§8返回");
+		gui.setItem(26, returnButton);
+		
+		player.openInventory(gui);
+	}
+	
+	// 打开添加全局权限 GUI (6行)
+	public static void openGlobalAddGui(Player player, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Set<UUID>> globalPermissions) {
+		Inventory gui = Bukkit.createInventory(null, PERMISSION_ADD_ROWS * 9, GLOBAL_ADD_TITLE);
+		
+		UUID ownerUUID = chestOwners.get(getLocationKey(chestBlock));
+		Set<UUID> globallyAuthorized = globalPermissions.getOrDefault(ownerUUID, new HashSet<>());
+		
+		Collection<? extends Player> onlinePlayers = Bukkit.getOnlinePlayers();
+		List<Player> playersWithoutGlobalPermission = new ArrayList<>();
+		
+		for (Player onlinePlayer : onlinePlayers) {
+			if (onlinePlayer.getUniqueId().equals(ownerUUID)) {
+				continue;
+			}
+			if (globallyAuthorized.contains(onlinePlayer.getUniqueId())) {
+				continue;
+			}
+			playersWithoutGlobalPermission.add(onlinePlayer);
+		}
+		
+		ItemStack blackGlass = createItem(Material.BLACK_STAINED_GLASS_PANE, " ");
+		fillBorder(gui, PERMISSION_ADD_ROWS, blackGlass);
+		
+		List<Integer> innerSlots = getInnerSlots(PERMISSION_ADD_ROWS);
+		int playerIndex = 0;
+		
+		for (int slot : innerSlots) {
+			if (playerIndex < playersWithoutGlobalPermission.size()) {
+				Player targetPlayer = playersWithoutGlobalPermission.get(playerIndex);
+				ItemStack playerHead = createPermissionPlayerHead(targetPlayer, "§e");
+				gui.setItem(slot, playerHead);
+				playerIndex++;
+			}
+		}
+		
+		player.openInventory(gui);
+	}
+	
+	// 打开删除全局权限 GUI (6行)
+	public static void openGlobalRemoveGui(Player player, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Set<UUID>> globalPermissions) {
+		Inventory gui = Bukkit.createInventory(null, PERMISSION_REMOVE_ROWS * 9, GLOBAL_REMOVE_TITLE);
+		
+		UUID ownerUUID = chestOwners.get(getLocationKey(chestBlock));
+		Set<UUID> globallyAuthorized = globalPermissions.getOrDefault(ownerUUID, new HashSet<>());
+		
+		List<OfflinePlayer> playersWithGlobalPermission = new ArrayList<>();
+		for (UUID uuid : globallyAuthorized) {
+			playersWithGlobalPermission.add(Bukkit.getOfflinePlayer(uuid));
+		}
+		
+		ItemStack blackGlass = createItem(Material.BLACK_STAINED_GLASS_PANE, " ");
+		fillBorder(gui, PERMISSION_REMOVE_ROWS, blackGlass);
+		
+		List<Integer> innerSlots = getInnerSlots(PERMISSION_REMOVE_ROWS);
+		int playerIndex = 0;
+		
+		for (int slot : innerSlots) {
+			if (playerIndex < playersWithGlobalPermission.size()) {
+				OfflinePlayer targetPlayer = playersWithGlobalPermission.get(playerIndex);
+				ItemStack playerHead = createPermissionPlayerHead(targetPlayer, "§c");
+				gui.setItem(slot, playerHead);
+				playerIndex++;
+			}
+		}
 		
 		player.openInventory(gui);
 	}
@@ -189,11 +285,26 @@ public class ShanGui {
 		return PERMISSION_REMOVE_TITLE.equals(title);
 	}
 	
+	public static boolean isGlobalPermissionGui(String title) {
+		return GLOBAL_PERMISSION_TITLE.equals(title);
+	}
+	
+	public static boolean isGlobalAddGui(String title) {
+		return GLOBAL_ADD_TITLE.equals(title);
+	}
+	
+	public static boolean isGlobalRemoveGui(String title) {
+		return GLOBAL_REMOVE_TITLE.equals(title);
+	}
+	
 	// 箱子管理GUI点击
-	public static void handleBoxManageClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<String, Set<UUID>> chestPermissions) {
+	public static void handleBoxManageClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<String, Set<UUID>> chestPermissions, Map<UUID, Set<UUID>> globalPermissions) {
 		switch (slot) {
 			case 10: 
 				openSinglePermissionGui(player, chestBlock, chestOwners);
+				break;
+			case 12: 
+				openGlobalPermissionGui(player, chestBlock, chestOwners);
 				break;
 			case 14: 
 				player.sendMessage("§c§l§n锁定开关");
@@ -219,6 +330,109 @@ public class ShanGui {
 		}
 	}
 	
+	// 全局权限设置GUI点击
+	public static void handleGlobalPermissionClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Set<UUID>> globalPermissions) {
+		switch (slot) {
+			case 12: 
+				openGlobalAddGui(player, chestBlock, chestOwners, globalPermissions);
+				break;
+			case 16: 
+				openGlobalRemoveGui(player, chestBlock, chestOwners, globalPermissions);
+				break;
+			case 26: 
+				openBoxManageGui(player, chestBlock, chestOwners);
+				break;
+		}
+	}
+	
+	// 添加全局权限
+	public static boolean handleGlobalAddClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Set<UUID>> globalPermissions) {
+		UUID ownerUUID = chestOwners.get(getLocationKey(chestBlock));
+		if (ownerUUID == null) {
+			return false;
+		}
+		
+		Set<UUID> authorizedPlayers = globalPermissions.computeIfAbsent(ownerUUID, k -> new HashSet<>());
+		
+		if (isInnerSlot(slot, PERMISSION_ADD_ROWS)) {
+			Inventory gui = player.getOpenInventory().getTopInventory();
+			ItemStack clickedItem = gui.getItem(slot);
+			
+			if (clickedItem != null && clickedItem.getType() == Material.PLAYER_HEAD) {
+				ItemMeta meta = clickedItem.getItemMeta();
+				if (meta != null && meta.hasDisplayName()) {
+					String playerName = meta.getDisplayName().replace("§e", "");
+					
+					OfflinePlayer targetPlayer = Bukkit.getOfflinePlayer(playerName);
+					if (targetPlayer != null && targetPlayer.getUniqueId() != null) {
+						authorizedPlayers.add(targetPlayer.getUniqueId());
+						
+						// 同时给当前玩家所有箱子添加权限
+						for (Map.Entry<String, Set<UUID>> entry : chestPermissions.entrySet()) {
+							String locKey = entry.getKey();
+							UUID chestOwner = chestOwners.get(locKey);
+							if (chestOwner != null && chestOwner.equals(ownerUUID)) {
+								entry.getValue().add(targetPlayer.getUniqueId());
+							}
+						}
+						
+						player.closeInventory();
+						return true;
+					}
+				}
+			}
+		}
+		return false;
+	}
+	
+	// 删除全局权限
+	public static boolean handleGlobalRemoveClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Set<UUID>> globalPermissions, Map<String, Set<UUID>> chestPermissions) {
+		UUID ownerUUID = chestOwners.get(getLocationKey(chestBlock));
+		if (ownerUUID == null) {
+			return false;
+		}
+		
+		Set<UUID> authorizedPlayers = globalPermissions.get(ownerUUID);
+		if (authorizedPlayers == null) {
+			return false;
+		}
+		
+		if (isInnerSlot(slot, PERMISSION_REMOVE_ROWS)) {
+			Inventory gui = player.getOpenInventory().getTopInventory();
+			ItemStack clickedItem = gui.getItem(slot);
+			
+			if (clickedItem != null && clickedItem.getType() == Material.PLAYER_HEAD) {
+				ItemMeta meta = clickedItem.getItemMeta();
+				if (meta != null && meta.hasDisplayName()) {
+					String playerName = meta.getDisplayName().replace("§c", "");
+					
+					OfflinePlayer targetPlayer = Bukkit.getOfflinePlayer(playerName);
+					if (targetPlayer != null && targetPlayer.getUniqueId() != null) {
+						UUID targetUUID = targetPlayer.getUniqueId();
+						authorizedPlayers.remove(targetUUID);
+						
+						// 从所有箱子中移除权限
+						for (Map.Entry<String, Set<UUID>> entry : chestPermissions.entrySet()) {
+							String locKey = entry.getKey();
+							UUID chestOwner = chestOwners.get(locKey);
+							if (chestOwner != null && chestOwner.equals(ownerUUID)) {
+								entry.getValue().remove(targetUUID);
+							}
+						}
+						
+						if (authorizedPlayers.isEmpty()) {
+							globalPermissions.remove(ownerUUID);
+						}
+						
+						player.closeInventory();
+						return true;
+					}
+				}
+			}
+		}
+		return false;
+	}
+	
 	// 添加权限
 	public static boolean handlePermissionAddClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<String, Set<UUID>> chestPermissions) {
 		String locationKey = getLocationKey(chestBlock);
@@ -241,7 +455,6 @@ public class ShanGui {
 					OfflinePlayer targetPlayer = Bukkit.getOfflinePlayer(playerName);
 					if (targetPlayer != null && targetPlayer.getUniqueId() != null) {
 						allowedPlayers.add(targetPlayer.getUniqueId());
-						player.sendMessage("§a已授予玩家 §6" + playerName + " §a打开此箱子的权限");
 						player.closeInventory();
 						return true;
 					}
@@ -277,7 +490,6 @@ public class ShanGui {
 					OfflinePlayer targetPlayer = Bukkit.getOfflinePlayer(playerName);
 					if (targetPlayer != null && targetPlayer.getUniqueId() != null) {
 						allowedPlayers.remove(targetPlayer.getUniqueId());
-						player.sendMessage("§c已取消玩家 §6" + playerName + " §c打开此箱子的权限");
 						player.closeInventory();
 						return true;
 					}

@@ -157,7 +157,7 @@ public class Shan extends JavaPlugin implements Listener {
 		String locationKey = getLocationKey(block);
 		UUID ownerUUID = chestOwners.get(locationKey);
 		
-		if (ownerUUID != null && !ownerUUID.equals(player.getUniqueId())) {
+		if (ownerUUID != null && !hasChestPermission(locationKey, player)) {
 			event.setCancelled(true);
 			player.sendMessage("§c这个箱子已被锁定，您无法破坏！");
 		} else if (ownerUUID != null) {
@@ -232,19 +232,19 @@ public class Shan extends JavaPlugin implements Listener {
 		
 		if (ShanGui.isBoxManageGui(title)) {
 			event.setCancelled(true);
-			if (slot == 10) {
+			if (slot == 10 || slot == 12) {
 				switchingGuiPlayers.add(player.getUniqueId());
 				final String loc = chestLocation;
 				final int s = slot;
 				Bukkit.getScheduler().runTaskLater(this, () -> {
 					Block cb = parseBlockLocation(player, loc);
 					if (cb != null) {
-						ShanGui.handleBoxManageClick(player, s, cb, chestOwners, chestPermissions);
+						ShanGui.handleBoxManageClick(player, s, cb, chestOwners, chestPermissions, globalPermissions);
 					}
 					switchingGuiPlayers.remove(player.getUniqueId());
 				}, 2L);
 			} else {
-				ShanGui.handleBoxManageClick(player, slot, chestBlock, chestOwners, chestPermissions);
+				ShanGui.handleBoxManageClick(player, slot, chestBlock, chestOwners, chestPermissions, globalPermissions);
 			}
 		}
 		else if (ShanGui.isSinglePermissionGui(title)) {
@@ -260,6 +260,35 @@ public class Shan extends JavaPlugin implements Listener {
 					}
 					switchingGuiPlayers.remove(player.getUniqueId());
 				}, 2L);
+			}
+		}
+		else if (ShanGui.isGlobalPermissionGui(title)) {
+			event.setCancelled(true);
+			if (slot == 12 || slot == 16 || slot == 26) {
+				switchingGuiPlayers.add(player.getUniqueId());
+				final String loc = chestLocation;
+				final int s = slot;
+				Bukkit.getScheduler().runTaskLater(this, () -> {
+					Block cb = parseBlockLocation(player, loc);
+					if (cb != null) {
+						ShanGui.handleGlobalPermissionClick(player, s, cb, chestOwners, globalPermissions);
+					}
+					switchingGuiPlayers.remove(player.getUniqueId());
+				}, 2L);
+			}
+		}
+		else if (ShanGui.isGlobalAddGui(title)) {
+			event.setCancelled(true);
+			boolean closed = ShanGui.handleGlobalAddClick(player, slot, chestBlock, chestOwners, globalPermissions);
+			if (closed) {
+				saveChestData();
+			}
+		}
+		else if (ShanGui.isGlobalRemoveGui(title)) {
+			event.setCancelled(true);
+			boolean closed = ShanGui.handleGlobalRemoveClick(player, slot, chestBlock, chestOwners, globalPermissions, chestPermissions);
+			if (closed) {
+				saveChestData();
 			}
 		}
 		else if (ShanGui.isPermissionAddGui(title)) {
@@ -313,7 +342,10 @@ public class Shan extends JavaPlugin implements Listener {
 		if (!ShanGui.isBoxManageGui(title) && 
 			!ShanGui.isSinglePermissionGui(title) && 
 			!ShanGui.isPermissionAddGui(title) && 
-			!ShanGui.isPermissionRemoveGui(title)) {
+			!ShanGui.isPermissionRemoveGui(title) &&
+			!ShanGui.isGlobalPermissionGui(title) &&
+			!ShanGui.isGlobalAddGui(title) &&
+			!ShanGui.isGlobalRemoveGui(title)) {
 			return;
 		}
 		
