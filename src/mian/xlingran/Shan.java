@@ -21,10 +21,31 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.OfflinePlayer;
 
 import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.*;
 import java.util.logging.Level;
+import java.util.logging.ConsoleHandler;
+import java.util.logging.Handler;
 
 public class Shan extends JavaPlugin implements Listener {
+	
+	// 静态初始化块：在类加载时强制设置 UTF-8 编码，解决 Windows CMD 乱码
+	static {
+		try {
+			System.setProperty("file.encoding", "UTF-8");
+			System.setProperty("sun.jnu.encoding", "UTF-8");
+			
+			// 尝试修改控制台 Handler 的编码
+			java.util.logging.Logger rootLogger = java.util.logging.Logger.getLogger("");
+			for (Handler handler : rootLogger.getHandlers()) {
+				if (handler instanceof ConsoleHandler) {
+					handler.setEncoding("UTF-8");
+				}
+			}
+		} catch (Exception e) {
+			// 忽略编码设置失败
+		}
+	}
 	
 	// 储存箱
 	private Map<String, UUID> chestOwners = new HashMap<>();

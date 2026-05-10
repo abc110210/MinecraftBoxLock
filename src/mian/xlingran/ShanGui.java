@@ -150,7 +150,7 @@ public class ShanGui {
 		player.openInventory(gui);
 	}
 	
-	// 打开删除全局权限 GUI (7行，带分页)
+	// 打开删除全局权限 GUI (6行，带分页)
 	public static void openGlobalRemoveGui(Player player, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Set<UUID>> globalPermissions, int page) {
 		Inventory gui = Bukkit.createInventory(null, PERMISSION_REMOVE_ROWS * 9, GLOBAL_REMOVE_TITLE);
 		
@@ -163,7 +163,7 @@ public class ShanGui {
 		}
 		
 		ItemStack blackGlass = createItem(Material.BLACK_STAINED_GLASS_PANE, " ");
-		fillBorder(gui, PERMISSION_REMOVE_ROWS, blackGlass);
+		fillBorderPaginated(gui, PERMISSION_REMOVE_ROWS, blackGlass);
 		
 		int totalPages = Math.max(1, (int) Math.ceil((double) playersWithGlobalPermission.size() / PLAYERS_PER_PAGE));
 		if (page < 0) page = 0;
@@ -173,7 +173,7 @@ public class ShanGui {
 		int startIndex = page * PLAYERS_PER_PAGE;
 		int endIndex = Math.min(startIndex + PLAYERS_PER_PAGE, playersWithGlobalPermission.size());
 		
-		// 获取内部格子（第2-6行，第2-8列 = 35格）
+		// 获取内部格子（第2-5行，第2-8列 = 28格）
 		List<Integer> innerSlots = getInnerSlotsPaginated(PERMISSION_REMOVE_ROWS);
 		int slotIndex = 0;
 		
@@ -195,18 +195,14 @@ public class ShanGui {
 			gui.setItem(NEXT_PAGE_SLOT, nextBlank);
 		}
 		
-		// 上一页按钮 (黄绿色玻璃, 第1页时返回上一级)
+		// 上一页/返回按钮 (黄绿色玻璃, 第1页时返回上一级)
 		if (page > 0) {
 			ItemStack prevButton = createItem(Material.LIME_STAINED_GLASS_PANE, "§d上一页");
 			gui.setItem(PREV_PAGE_SLOT, prevButton);
 		} else {
-			ItemStack prevBlank = createItem(Material.LIME_STAINED_GLASS_PANE, "§d返回");
-			gui.setItem(PREV_PAGE_SLOT, prevBlank);
+			ItemStack returnButton = createItem(Material.LIME_STAINED_GLASS_PANE, "§d返回");
+			gui.setItem(PREV_PAGE_SLOT, returnButton);
 		}
-		
-		// 返回按钮（始终显示在右下角）
-		ItemStack returnButton = createItem(Material.WHITE_STAINED_GLASS_PANE, "§8返回");
-		gui.setItem(RETURN_SLOT, returnButton);
 		
 		player.openInventory(gui);
 	}
@@ -267,7 +263,7 @@ public class ShanGui {
 		}
 		
 		ItemStack blackGlass = createItem(Material.BLACK_STAINED_GLASS_PANE, " ");
-		fillBorder(gui, PERMISSION_REMOVE_ROWS, blackGlass);
+		fillBorderPaginated(gui, PERMISSION_REMOVE_ROWS, blackGlass);
 		
 		int totalPages = Math.max(1, (int) Math.ceil((double) playersWithPermission.size() / PLAYERS_PER_PAGE));
 		if (page < 0) page = 0;
@@ -311,7 +307,7 @@ public class ShanGui {
 		player.openInventory(gui);
 	}
 	
-	// 玻璃板
+	// 玻璃板（用于普通GUI）
 	private static void fillBorder(Inventory gui, int rows, ItemStack blackGlass) {
 		int cols = 9;
 		
@@ -319,6 +315,25 @@ public class ShanGui {
 			for (int col = 0; col < cols; col++) {
 				if (row == 0 || row == rows - 1 || col == 0 || col == cols - 1) {
 					int slot = row * cols + col;
+					gui.setItem(slot, blackGlass);
+				}
+			}
+		}
+	}
+	
+	// 玻璃板（用于分页GUI，排除底部导航区域）
+	private static void fillBorderPaginated(Inventory gui, int rows, ItemStack blackGlass) {
+		int cols = 9;
+		
+		for (int row = 0; row < rows; row++) {
+			for (int col = 0; col < cols; col++) {
+				int slot = row * cols + col;
+				// 顶部边框 + 左右边框
+				boolean isBorder = row == 0 || col == 0 || col == cols - 1;
+				// 底部边框，但排除导航按钮位置
+				boolean isBottomBorder = row == rows - 1 && slot != PREV_PAGE_SLOT && slot != NEXT_PAGE_SLOT;
+				
+				if (isBorder || isBottomBorder) {
 					gui.setItem(slot, blackGlass);
 				}
 			}
@@ -490,21 +505,8 @@ public class ShanGui {
 		}
 		
 		Set<UUID> authorizedPlayers = globalPermissions.get(ownerUUID);
-		if (authorizedPlayers == null) {
-			return false;
-		}
 		
-		// 返回按钮
-		if (slot == RETURN_SLOT) {
-			playerGuiPages.remove(player.getUniqueId());
-			switchingGuiPlayers.add(player.getUniqueId());
-			Bukkit.getScheduler().runTaskLater(plugin, () -> {
-				openGlobalPermissionGui(player, chestBlock, chestOwners);
-				switchingGuiPlayers.remove(player.getUniqueId());
-			}, 2L);
-			return false;
-		}
-		
+		// 先处理导航按钮，确保即使列表为空也能返回
 		// 上一页/返回 (第1页时返回上一级, 其他页时返回上一页)
 		if (slot == PREV_PAGE_SLOT) {
 			if (currentPage == 0) {
@@ -525,10 +527,15 @@ public class ShanGui {
 		
 		// 下一页
 		if (slot == NEXT_PAGE_SLOT) {
-			int totalPages = Math.max(1, (int) Math.ceil((double) authorizedPlayers.size() / PLAYERS_PER_PAGE));
+			int totalPages = Math.max(1, (int) Math.ceil((double) (authorizedPlayers != null ? authorizedPlayers.size() : 0) / PLAYERS_PER_PAGE));
 			int newPage = Math.min(totalPages - 1, currentPage + 1);
 			playerGuiPages.put(player.getUniqueId(), newPage);
 			openGlobalRemoveGui(player, chestBlock, chestOwners, globalPermissions, newPage);
+			return false;
+		}
+		
+		// 检查是否有权限数据
+		if (authorizedPlayers == null || authorizedPlayers.isEmpty()) {
 			return false;
 		}
 		
