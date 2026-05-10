@@ -250,33 +250,29 @@ public class Shan extends JavaPlugin implements Listener {
 		}
 		else if (ShanGui.isSinglePermissionGui(title)) {
 			event.setCancelled(true);
-			if (slot == 11 || slot == 15 || slot == 26) {
-				switchingGuiPlayers.add(player.getUniqueId());
-				final String loc = chestLocation;
-				final int s = slot;
-				Bukkit.getScheduler().runTaskLater(this, () -> {
-					Block cb = parseBlockLocation(player, loc);
-					if (cb != null) {
-						ShanGui.handleSinglePermissionClick(player, s, cb, chestOwners, chestPermissions);
-					}
-					switchingGuiPlayers.remove(player.getUniqueId());
-				}, 2L);
-			}
+			switchingGuiPlayers.add(player.getUniqueId());
+			final String loc = chestLocation;
+			final int s = slot;
+			Bukkit.getScheduler().runTaskLater(this, () -> {
+				Block cb = parseBlockLocation(player, loc);
+				if (cb != null) {
+					ShanGui.handleSinglePermissionClick(player, s, cb, chestOwners, chestPermissions);
+				}
+				switchingGuiPlayers.remove(player.getUniqueId());
+			}, 2L);
 		}
 		else if (ShanGui.isGlobalPermissionGui(title)) {
 			event.setCancelled(true);
-			if (slot == 12 || slot == 16 || slot == 26) {
-				switchingGuiPlayers.add(player.getUniqueId());
-				final String loc = chestLocation;
-				final int s = slot;
-				Bukkit.getScheduler().runTaskLater(this, () -> {
-					Block cb = parseBlockLocation(player, loc);
-					if (cb != null) {
-						ShanGui.handleGlobalPermissionClick(player, s, cb, chestOwners, globalPermissions);
-					}
-					switchingGuiPlayers.remove(player.getUniqueId());
-				}, 2L);
-			}
+			switchingGuiPlayers.add(player.getUniqueId());
+			final String loc = chestLocation;
+			final int s = slot;
+			Bukkit.getScheduler().runTaskLater(this, () -> {
+				Block cb = parseBlockLocation(player, loc);
+				if (cb != null) {
+					ShanGui.handleGlobalPermissionClick(player, s, cb, chestOwners, globalPermissions);
+				}
+				switchingGuiPlayers.remove(player.getUniqueId());
+			}, 2L);
 		}
 		else if (ShanGui.isGlobalAddGui(title)) {
 			event.setCancelled(true);
@@ -554,7 +550,8 @@ public class Shan extends JavaPlugin implements Listener {
 				globalPermissions.remove(player.getUniqueId());
 			}
 			
-			// 从所有箱子中移除权限
+			// 从所有箱子中移除权限 - 先收集要删除的 key，避免 ConcurrentModificationException
+			List<String> keysToRemove = new ArrayList<>();
 			for (Map.Entry<String, Set<UUID>> entry : chestPermissions.entrySet()) {
 				String locationKey = entry.getKey();
 				UUID ownerUUID = chestOwners.get(locationKey);
@@ -564,9 +561,13 @@ public class Shan extends JavaPlugin implements Listener {
 					Set<UUID> chestPerms = entry.getValue();
 					chestPerms.remove(targetUUID);
 					if (chestPerms.isEmpty()) {
-						chestPermissions.remove(locationKey);
+						keysToRemove.add(locationKey);
 					}
 				}
+			}
+			// 批量删除空权限条目
+			for (String key : keysToRemove) {
+				chestPermissions.remove(key);
 			}
 			
 			saveChestData();
