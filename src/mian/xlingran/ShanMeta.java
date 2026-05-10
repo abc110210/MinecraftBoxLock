@@ -97,10 +97,10 @@ public class ShanMeta {
 					cachedHead.getPlayerName() != null ? cachedHead.getPlayerName() : "Unknown"
 				);
 				org.bukkit.profile.PlayerTextures textures = profile.getTextures();
-				java.net.URI textureUri = java.net.URI.create(
+				java.net.URL textureUrl = new java.net.URL(
 					"data:application/json;base64," + cachedHead.getTextureValue()
 				);
-				textures.setSkin(textureUri);
+				textures.setSkin(textureUrl);
 				profile.setTextures(textures);
 				meta.setOwnerProfile(profile);
 				
@@ -209,9 +209,10 @@ public class ShanMeta {
 	private static String extractTextureValue(org.bukkit.profile.PlayerProfile profile) {
 		try {
 			org.bukkit.profile.PlayerTextures textures = profile.getTextures();
-			if (textures.getSkin() != null) {
-				String uri = textures.getSkin().toString();
-				// URI 格式: data:application/json;base64,xxxxx
+			java.net.URL skinUrl = textures.getSkin();
+			if (skinUrl != null) {
+				String uri = skinUrl.toString();
+				// URL 格式: data:application/json;base64,xxxxx
 				if (uri.contains("base64,")) {
 					return uri.substring(uri.indexOf("base64,") + 7);
 				}
@@ -226,16 +227,7 @@ public class ShanMeta {
 	 * 从 PlayerProfile 提取纹理 signature
 	 */
 	private static String extractTextureSignature(org.bukkit.profile.PlayerProfile profile) {
-		try {
-			org.bukkit.profile.PlayerTextures textures = profile.getTextures();
-			if (textures.getSkin() != null) {
-				java.net.URI skinUri = textures.getSkin();
-				// Spigot 1.21.1 可能没有直接的 signature API
-				// 如果需要，可以返回 null
-			}
-		} catch (Exception e) {
-			// 忽略
-		}
+		// Spigot 1.21.1 没有直接的 signature API，返回 null
 		return null;
 	}
 	
