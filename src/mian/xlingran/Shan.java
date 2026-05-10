@@ -212,7 +212,7 @@ public class Shan extends JavaPlugin implements Listener {
 		return chestOwners.containsKey(locationKey);
 	}
 	
-	@EventHandler
+		@EventHandler(priority = EventPriority.HIGHEST)
 	public void onInventoryClick(InventoryClickEvent event) {
 		if (event.getView() == null) {
 			return;
@@ -311,22 +311,10 @@ public class Shan extends JavaPlugin implements Listener {
 		}
 		else if (ShanGui.isPermissionRemoveGui(title)) {
 			event.setCancelled(true);
-			if (slot == 53) {
-				switchingGuiPlayers.add(player.getUniqueId());
-				final String loc = chestLocation;
-				Bukkit.getScheduler().runTaskLater(this, () -> {
-					Block cb = parseBlockLocation(player, loc);
-					if (cb != null) {
-						ShanGui.openSinglePermissionGui(player, cb, chestOwners);
-					}
-					switchingGuiPlayers.remove(player.getUniqueId());
-				}, 2L);
-			} else {
-				int currentPage = playerGuiPages.getOrDefault(player.getUniqueId(), 0);
-				boolean closed = ShanGui.handlePermissionRemoveClick(player, slot, chestBlock, chestOwners, chestPermissions, playerGuiPages, switchingGuiPlayers, currentPage);
-				if (closed) {
-					saveChestData();
-				}
+			int currentPage = playerGuiPages.getOrDefault(player.getUniqueId(), 0);
+			boolean closed = ShanGui.handlePermissionRemoveClick(player, slot, chestBlock, chestOwners, chestPermissions, playerGuiPages, switchingGuiPlayers, currentPage);
+			if (closed) {
+				saveChestData();
 			}
 		}
 	}
