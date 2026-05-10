@@ -25,6 +25,8 @@ public class ShanMeta {
 	private static File cacheFile;
 	// 使用 ConcurrentHashMap 保证线程安全
 	private static Map<UUID, CachedHead> headCache = new ConcurrentHashMap<>();
+	// 缓存完整的头颅物品（包含皮肤纹理）
+	private static Map<UUID, ItemStack> cachedHeadItems = new ConcurrentHashMap<>();
 	
 	// 防抖保存相关
 	private static volatile boolean saveScheduled = false;
@@ -40,60 +42,44 @@ public class ShanMeta {
 	}
 	
 	/**
-	 * 创建带缓存的玩家头颅
+	 * 创建带缓存的玩家头颅（优先使用本地缓存，不联网）
 	 * @param player 离线玩家对象
 	 * @param displayName 显示名称（包含颜色代码）
 	 * @return 玩家头颅物品
 	 */
 	public static ItemStack createCachedPlayerHead(OfflinePlayer player, String displayName) {
 		if (player == null) {
-			// 创建空头颅作为后备
-			ItemStack head = new ItemStack(org.bukkit.Material.PLAYER_HEAD);
-			SkullMeta meta = (SkullMeta) head.getItemMeta();
-			if (meta != null) {
-				meta.setDisplayName(displayName);
-				head.setItemMeta(meta);
-			}
-			return head;
+			return createEmptyHead(displayName);
 		}
 		
 		UUID playerUUID = player.getUniqueId();
 		
-		// 检查缓存是否有效
-		CachedHead cachedHead = headCache.get(playerUUID);
-		if (cachedHead != null && !cachedHead.isExpired()) {
-			// 使用缓存数据创建头颅
-			return createHeadFromCache(cachedHead, displayName);
+		// 优先检查缓存的头颅物品
+		if (cachedHeadItems.containsKey(playerUUID)) {
+			return cloneHeadWithDisplayName(cachedHeadItems.get(playerUUID), displayName);
 		}
 		
-		// 缓存无效或不存在，从 Bukkit API 获取
-		try {
-			ItemStack head = new ItemStack(org.bukkit.Material.PLAYER_HEAD);
-			SkullMeta meta = (SkullMeta) head.getItemMeta();
-			
-			if (meta != null) {
-				meta.setDisplayName(displayName);
-				meta.setOwningPlayer(player);
-				head.setItemMeta(meta);
-				
-				// 更新缓存
-				updateCache(playerUUID, player.getName());
+		// 检查缓存是否有效（通过 UUID 和名称）
+		CachedHead cachedHead = headCache.get(playerUUID);
+		if (cachedHead != null && !cachedHead.isExpired()) {
+			// 尝试从 Bukkit 本地缓存获取玩家对象（不会联网，因为服务器已缓存过）
+			OfflinePlayer cachedPlayer = Bukkit.getOfflinePlayer(cachedHead.getUuid());
+			if (cachedPlayer != null) {
+				ItemStack head = new ItemStack(org.bukkit.Material.PLAYER_HEAD);
+				SkullMeta meta = (SkullMeta) head.getItemMeta();
+				if (meta != null) {
+					meta.setDisplayName(displayName);
+					meta.setOwningPlayer(cachedPlayer);
+					head.setItemMeta(meta);
+					// 缓存这个头颅
+					cachedHeadItems.put(playerUUID, head.clone());
+					return head;
+				}
 			}
-			
-			return head;
-		} catch (Exception e) {
-			if (plugin != null) {
-				plugin.getLogger().log(Level.WARNING, "创建玩家头颅失败: " + player.getName(), e);
-			}
-			// 返回空头颅作为后备
-			ItemStack head = new ItemStack(org.bukkit.Material.PLAYER_HEAD);
-			SkullMeta meta = (SkullMeta) head.getItemMeta();
-			if (meta != null) {
-				meta.setDisplayName(displayName);
-				head.setItemMeta(meta);
-			}
-			return head;
 		}
+		
+		// 缓存无效且 Bukkit 本地没有缓存，返回默认头颅
+		return createEmptyHead(displayName);
 	}
 	
 	/**
@@ -107,10 +93,9 @@ public class ShanMeta {
 		for (Map.Entry<UUID, CachedHead> entry : headCache.entrySet()) {
 			CachedHead value = entry.getValue();
 			if (value != null && value.getPlayerName() != null && value.getPlayerName().equals(playerName)) {
-				if (!value.isExpired()) {
-					// 使用缓存的 UUID 获取玩家对象
-					OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(entry.getKey());
-					return createCachedPlayerHead(offlinePlayer, displayName);
+				if (!value.isExpired() && cachedHeadItems.containsKey(entry.getKey())) {
+					// 使用缓存的头颅
+					return cloneHeadWithDisplayName(cachedHeadItems.get(entry.getKey()), displayName);
 				}
 			}
 		}
@@ -121,24 +106,37 @@ public class ShanMeta {
 	}
 	
 	/**
-	 * 从缓存数据创建头颅物品
+	 * 从缓存数据创建头颅物品（已废弃，保留兼容）
 	 */
+	@Deprecated
 	private static ItemStack createHeadFromCache(CachedHead cachedHead, String displayName) {
+		return createEmptyHead(displayName);
+	}
+	
+	/**
+	 * 创建空头颅（默认 Steve 皮肤）
+	 */
+	private static ItemStack createEmptyHead(String displayName) {
 		ItemStack head = new ItemStack(org.bukkit.Material.PLAYER_HEAD);
 		SkullMeta meta = (SkullMeta) head.getItemMeta();
-		
 		if (meta != null) {
 			meta.setDisplayName(displayName);
-			
-			// 使用缓存的 UUID 获取玩家对象
-			// 注意：这可能会触发一次网络请求，但 Bukkit 会缓存结果
-			OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(cachedHead.getUuid());
-			meta.setOwningPlayer(offlinePlayer);
-			
 			head.setItemMeta(meta);
 		}
-		
 		return head;
+	}
+	
+	/**
+	 * 复制缓存的头颅并修改显示名称
+	 */
+	private static ItemStack cloneHeadWithDisplayName(ItemStack cachedHead, String displayName) {
+		ItemStack clone = cachedHead.clone();
+		SkullMeta meta = (SkullMeta) clone.getItemMeta();
+		if (meta != null) {
+			meta.setDisplayName(displayName);
+			clone.setItemMeta(meta);
+		}
+		return clone;
 	}
 	
 	/**
@@ -179,29 +177,30 @@ public class ShanMeta {
 		String playerName = player.getName();
 		
 		// 检查缓存是否已存在且有效
-		CachedHead cachedHead = headCache.get(playerUUID);
-		if (cachedHead != null && !cachedHead.isExpired()) {
-			// 缓存有效，只需要更新时间戳
-			cachedHead.setTimestamp(System.currentTimeMillis());
-			// 延迟保存，避免频繁IO
-			scheduleSave();
+		if (cachedHeadItems.containsKey(playerUUID)) {
+			// 缓存有效，更新时间戳
+			CachedHead cachedHead = headCache.get(playerUUID);
+			if (cachedHead != null) {
+				cachedHead.setTimestamp(System.currentTimeMillis());
+				scheduleSave();
+			}
 			return;
 		}
 		
-		// 使用延迟任务预缓存，给服务器一些缓冲时间
+		// 使用延迟任务异步预缓存，给服务器一些缓冲时间
 		Bukkit.getScheduler().runTaskLaterAsynchronously(plugin, () -> {
 			try {
-				// 创建临时头颅来触发 Bukkit 的玩家数据加载
-				// 这会从 Mojang 获取玩家纹理数据并缓存到服务器
+				// 创建头颅并缓存
 				ItemStack head = new ItemStack(org.bukkit.Material.PLAYER_HEAD);
 				SkullMeta meta = (SkullMeta) head.getItemMeta();
 				
 				if (meta != null) {
-					// 设置玩家所有者，这会触发一次 Mojang API 请求
+					// 设置玩家所有者，这会触发一次 Mojang API 请求（异步执行，不影响主线程）
 					meta.setOwningPlayer(player);
 					head.setItemMeta(meta);
 					
-					// 更新缓存（同步更新）
+					// 缓存完整的头颅物品（包含皮肤纹理）
+					cachedHeadItems.put(playerUUID, head.clone());
 					headCache.put(playerUUID, new CachedHead(playerUUID, playerName, System.currentTimeMillis()));
 					scheduleSave();
 					
@@ -220,6 +219,15 @@ public class ShanMeta {
 		int before = headCache.size();
 		headCache.values().removeIf(CachedHead::isExpired);
 		int removedCount = before - headCache.size();
+		
+		// 同步清理头颅物品缓存
+		for (Map.Entry<UUID, CachedHead> entry : headCache.entrySet()) {
+			if (!cachedHeadItems.containsKey(entry.getKey())) {
+				cachedHeadItems.remove(entry.getKey());
+			}
+		}
+		// 清理不存在于 headCache 中的头颅物品
+		cachedHeadItems.keySet().removeIf(uuid -> !headCache.containsKey(uuid));
 		
 		if (removedCount > 0) {
 			saveCache(new HashMap<>(headCache));
