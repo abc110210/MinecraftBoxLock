@@ -16,6 +16,8 @@ import org.bukkit.event.inventory.InventoryMoveItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.Inventory;
 import org.bukkit.plugin.java.JavaPlugin;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandSender;
 
 import java.io.*;
 import java.util.*;
@@ -35,6 +37,9 @@ public class Shan extends JavaPlugin implements Listener {
 	@Override
 	public void onEnable() {
 		Bukkit.getPluginManager().registerEvents(this, this);
+		
+		// 注册指令
+		this.getCommand("xlr").setExecutor(this);
 		
 		// 初始化
 		dataFile = new File(getDataFolder(), "chests.yml");
@@ -89,12 +94,9 @@ public class Shan extends JavaPlugin implements Listener {
 			return;
 		}
 		
-		if (!ownerUUID.equals(player.getUniqueId())) {
-			Set<UUID> allowedPlayers = chestPermissions.get(locationKey);
-			if (allowedPlayers == null || !allowedPlayers.contains(player.getUniqueId())) {
-				event.setCancelled(true);
-				player.sendMessage("§c这个箱子已被锁定，您无法打开！");
-			}
+		if (!hasChestPermission(locationKey, player)) {
+			event.setCancelled(true);
+			player.sendMessage("§c这个箱子已被锁定，您无法打开！");
 		}
 	}
 
@@ -462,5 +464,78 @@ public class Shan extends JavaPlugin implements Listener {
 		} catch (IOException e) {
 			getLogger().log(Level.SEVERE, "无法加载箱子数据", e);
 		}
+	}
+	
+	// 处理 /xlr 指令
+	@Override
+	public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
+		if (!(sender instanceof Player)) {
+			sender.sendMessage("§c该指令只能由玩家执行！");
+			return true;
+		}
+		
+		Player player = (Player) sender;
+		
+		if (args.length != 1) {
+			player.sendMessage("§c用法: /xlr <玩家名称>");
+			player.sendMessage("§c将您所有的箱子权限授予指定玩家");
+			return true;
+		}
+		
+		String targetName = args[0];
+		OfflinePlayer targetPlayer = Bukkit.getOfflinePlayer(targetName);
+		
+		if (targetPlayer == null || !targetPlayer.hasPlayedBefore()) {
+			player.sendMessage("§c未找到玩家: §6" + targetName);
+			return true;
+		}
+		
+		UUID targetUUID = targetPlayer.getUniqueId();
+		if (targetUUID.equals(player.getUniqueId())) {
+			player.sendMessage("§c不能给自己授权！");
+			return true;
+		}
+		
+		// 统计授权的箱子数量
+		int authorizedCount = 0;
+		for (Map.Entry<String, UUID> entry : chestOwners.entrySet()) {
+			if (entry.getValue().equals(player.getUniqueId())) {
+				String locationKey = entry.getKey();
+				Set<UUID> allowedPlayers = chestPermissions.computeIfAbsent(locationKey, k -> new HashSet<>());
+				if (allowedPlayers.add(targetUUID)) {
+					authorizedCount++;
+				}
+			}
+		}
+		
+		saveChestData();
+		
+		player.sendMessage("§a已成功将 §6" + authorizedCount + " §a个箱子的权限授予玩家 §6" + targetPlayer.getName());
+		
+		// 如果目标玩家在线，通知他
+		Player onlineTarget = Bukkit.getPlayer(targetUUID);
+		if (onlineTarget != null && onlineTarget.isOnline()) {
+			onlineTarget.sendMessage("§a玩家 §6" + player.getName() + " §a已将他的所有箱子权限授予给您！");
+		}
+		
+		return true;
+	}
+	
+	// 检查玩家是否有权限打开箱子（包括全局授权）
+	private boolean hasChestPermission(String locationKey, Player player) {
+		UUID ownerUUID = chestOwners.get(locationKey);
+		
+		// 如果是箱子所有者，直接返回 true
+		if (ownerUUID != null && ownerUUID.equals(player.getUniqueId())) {
+			return true;
+		}
+		
+		// 检查单独权限
+		Set<UUID> allowedPlayers = chestPermissions.get(locationKey);
+		if (allowedPlayers != null && allowedPlayers.contains(player.getUniqueId())) {
+			return true;
+		}
+		
+		return false;
 	}
 }
