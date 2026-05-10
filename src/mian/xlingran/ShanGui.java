@@ -54,13 +54,27 @@ public class ShanGui {
 		ItemStack ownerHead = createPlayerHead(chestBlock, chestOwners);
 		gui.setItem(10, ownerHead);
 		
-		ItemStack wheat = createItem(Material.WHEAT, "§b全局权限设置");
+		ItemStack wheat = createItem(Material.WHEAT, "§b全局权限设置",
+			" ",
+			"§8§l- §6有权限的玩家可以打开你所有箱子",
+			"§8§l- §6对你所有箱子权限设置"
+		);
 		gui.setItem(12, wheat);
 		
-		ItemStack chest = createItem(Material.CHEST, "§9锁定开关");
+		ItemStack chest = createItem(Material.CHEST, "§9锁定开关",
+			" ",
+			"§8§l- §6在这里切换你的箱子状态",
+			"§b私有 §8- §6拥有权限的玩家才能打开",
+			"§b公开 §8- §6所有的玩家都可以打开你的箱子",
+			" "
+		);
 		gui.setItem(14, chest);
 		
-		ItemStack hopper = createItem(Material.HOPPER, "§b漏斗开关");
+		ItemStack hopper = createItem(Material.HOPPER, "§b漏斗开关",
+			" ",
+			"§8§l- §6打开和关闭漏斗传输",
+			" "
+		);
 		gui.setItem(16, hopper);
 		
 		player.openInventory(gui);
@@ -745,11 +759,19 @@ public class ShanGui {
 		if (meta != null) {
 			meta.setDisplayName("§a单独权限");
 			
+			// 添加 Lore 描述
+			List<String> lore = new ArrayList<>();
+			lore.add(" ");
+			lore.add("§8§l- §6给予玩家可以打开该箱子");
+			lore.add("§8§l- §6对单个箱子权限设置");
+			meta.setLore(lore);
+			
 			if (ownerUUID != null) {
 				OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(ownerUUID);
 				meta.setOwningPlayer(offlinePlayer);
 			}
 			
+			meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
 			head.setItemMeta(meta);
 		}
 		
