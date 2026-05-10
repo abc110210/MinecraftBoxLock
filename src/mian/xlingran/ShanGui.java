@@ -22,8 +22,8 @@ public class ShanGui {
 	private static final String PERMISSION_REMOVE_TITLE = "§c取消权限(单独)";
 	// GUI 行数
 	private static final int GUI_ROWS = 3;
-	private static final int PERMISSION_ADD_ROWS = 7;    // 63格
-	private static final int PERMISSION_REMOVE_ROWS = 9; // 81格 (最大)
+	private static final int PERMISSION_ADD_ROWS = 6;    // 54格 (最大)
+	private static final int PERMISSION_REMOVE_ROWS = 6; // 54格 (最大)
 	
 	/**
 	 * 打开箱子管理 GUI
