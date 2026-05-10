@@ -27,8 +27,13 @@ public class ShanGui {
 	private static final int GUI_ROWS = 3;      // 箱子管理 3行
 	private static final int SINGLE_ROWS = 3;   // 单独权限设置 3行
 	private static final int PERMISSION_ADD_ROWS = 6;    // 54格 (最大)
-	private static final int PERMISSION_REMOVE_ROWS = 6; // 54格 (最大)
+	private static final int PERMISSION_REMOVE_ROWS = 7; // 63格 (带分页)
 	private static final int GLOBAL_ROWS = 3;   // 全局权限设置 3行
+	// 分页常量
+	private static final int PLAYERS_PER_PAGE = 35; // 每页显示玩家数量 (5行×7列)
+	private static final int PREV_PAGE_SLOT = 56;   // 上一页按钮 (第57格)
+	private static final int NEXT_PAGE_SLOT = 60;   // 下一页按钮 (第61格)
+	private static final int RETURN_SLOT = 62;      // 返回按钮 (第63格)
 	
 	// 打开箱子管理GUI界面 (3行)
 	public static void openBoxManageGui(Player player, Block chestBlock, Map<String, UUID> chestOwners) {
@@ -85,10 +90,10 @@ public class ShanGui {
 		}
 		
 		ItemStack boneMeal = createItem(Material.BONE_MEAL, "§a添加全局权限");
-		gui.setItem(12, boneMeal);
+		gui.setItem(11, boneMeal);
 		
 		ItemStack feather = createItem(Material.FEATHER, "§c删除全局权限");
-		gui.setItem(16, feather);
+		gui.setItem(15, feather);
 		
 		ItemStack returnButton = createItem(Material.WHITE_STAINED_GLASS_PANE, "§8返回");
 		gui.setItem(26, returnButton);
@@ -134,8 +139,8 @@ public class ShanGui {
 		player.openInventory(gui);
 	}
 	
-	// 打开删除全局权限 GUI (6行)
-	public static void openGlobalRemoveGui(Player player, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Set<UUID>> globalPermissions) {
+	// 打开删除全局权限 GUI (7行，带分页)
+	public static void openGlobalRemoveGui(Player player, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Set<UUID>> globalPermissions, int page) {
 		Inventory gui = Bukkit.createInventory(null, PERMISSION_REMOVE_ROWS * 9, GLOBAL_REMOVE_TITLE);
 		
 		UUID ownerUUID = chestOwners.get(getLocationKey(chestBlock));
@@ -149,17 +154,42 @@ public class ShanGui {
 		ItemStack blackGlass = createItem(Material.BLACK_STAINED_GLASS_PANE, " ");
 		fillBorder(gui, PERMISSION_REMOVE_ROWS, blackGlass);
 		
-		List<Integer> innerSlots = getInnerSlots(PERMISSION_REMOVE_ROWS);
-		int playerIndex = 0;
+		int totalPages = Math.max(1, (int) Math.ceil((double) playersWithGlobalPermission.size() / PLAYERS_PER_PAGE));
+		if (page < 0) page = 0;
+		if (page >= totalPages) page = totalPages - 1;
 		
-		for (int slot : innerSlots) {
-			if (playerIndex < playersWithGlobalPermission.size()) {
-				OfflinePlayer targetPlayer = playersWithGlobalPermission.get(playerIndex);
+		// 计算当前页的玩家范围
+		int startIndex = page * PLAYERS_PER_PAGE;
+		int endIndex = Math.min(startIndex + PLAYERS_PER_PAGE, playersWithGlobalPermission.size());
+		
+		// 获取内部格子（第2-6行，第2-8列 = 35格）
+		List<Integer> innerSlots = getInnerSlotsPaginated(PERMISSION_REMOVE_ROWS);
+		int slotIndex = 0;
+		
+		for (int i = startIndex; i < endIndex; i++) {
+			if (slotIndex < innerSlots.size()) {
+				OfflinePlayer targetPlayer = playersWithGlobalPermission.get(i);
 				ItemStack playerHead = createPermissionPlayerHead(targetPlayer, "§c");
-				gui.setItem(slot, playerHead);
-				playerIndex++;
+				gui.setItem(innerSlots.get(slotIndex), playerHead);
+				slotIndex++;
 			}
 		}
+		
+		// 上一页按钮 (第57格)
+		if (page > 0) {
+			ItemStack prevButton = createItem(Material.ARROW, "§a上一页");
+			gui.setItem(PREV_PAGE_SLOT, prevButton);
+		}
+		
+		// 下一页按钮 (第61格)
+		if (page < totalPages - 1) {
+			ItemStack nextButton = createItem(Material.ARROW, "§a下一页");
+			gui.setItem(NEXT_PAGE_SLOT, nextButton);
+		}
+		
+		// 返回按钮 (第63格)
+		ItemStack returnButton = createItem(Material.WHITE_STAINED_GLASS_PANE, "§8返回");
+		gui.setItem(RETURN_SLOT, returnButton);
 		
 		player.openInventory(gui);
 	}
@@ -207,8 +237,8 @@ public class ShanGui {
 		player.openInventory(gui);
 	}
 	
-	// 移除权限
-	public static void openPermissionRemoveGui(Player player, Block chestBlock, Map<String, UUID> chestOwners, Map<String, Set<UUID>> chestPermissions) {
+	// 移除权限 GUI (7行，带分页)
+	public static void openPermissionRemoveGui(Player player, Block chestBlock, Map<String, UUID> chestOwners, Map<String, Set<UUID>> chestPermissions, int page) {
 		Inventory gui = Bukkit.createInventory(null, PERMISSION_REMOVE_ROWS * 9, PERMISSION_REMOVE_TITLE);
 		
 		String locationKey = getLocationKey(chestBlock);
@@ -222,20 +252,42 @@ public class ShanGui {
 		ItemStack blackGlass = createItem(Material.BLACK_STAINED_GLASS_PANE, " ");
 		fillBorder(gui, PERMISSION_REMOVE_ROWS, blackGlass);
 		
-		List<Integer> innerSlots = getInnerSlots(PERMISSION_REMOVE_ROWS);
-		int playerIndex = 0;
+		int totalPages = Math.max(1, (int) Math.ceil((double) playersWithPermission.size() / PLAYERS_PER_PAGE));
+		if (page < 0) page = 0;
+		if (page >= totalPages) page = totalPages - 1;
 		
-		for (int slot : innerSlots) {
-			if (playerIndex < playersWithPermission.size()) {
-				OfflinePlayer targetPlayer = playersWithPermission.get(playerIndex);
+		// 计算当前页的玩家范围
+		int startIndex = page * PLAYERS_PER_PAGE;
+		int endIndex = Math.min(startIndex + PLAYERS_PER_PAGE, playersWithPermission.size());
+		
+		// 获取内部格子
+		List<Integer> innerSlots = getInnerSlotsPaginated(PERMISSION_REMOVE_ROWS);
+		int slotIndex = 0;
+		
+		for (int i = startIndex; i < endIndex; i++) {
+			if (slotIndex < innerSlots.size()) {
+				OfflinePlayer targetPlayer = playersWithPermission.get(i);
 				ItemStack playerHead = createPermissionPlayerHead(targetPlayer, "§c");
-				gui.setItem(slot, playerHead);
-				playerIndex++;
+				gui.setItem(innerSlots.get(slotIndex), playerHead);
+				slotIndex++;
 			}
 		}
 		
+		// 上一页按钮 (第57格)
+		if (page > 0) {
+			ItemStack prevButton = createItem(Material.ARROW, "§a上一页");
+			gui.setItem(PREV_PAGE_SLOT, prevButton);
+		}
+		
+		// 下一页按钮 (第61格)
+		if (page < totalPages - 1) {
+			ItemStack nextButton = createItem(Material.ARROW, "§a下一页");
+			gui.setItem(NEXT_PAGE_SLOT, nextButton);
+		}
+		
+		// 返回按钮 (第63格)
 		ItemStack returnButton = createItem(Material.WHITE_STAINED_GLASS_PANE, "§8返回");
-		gui.setItem(53, returnButton);
+		gui.setItem(RETURN_SLOT, returnButton);
 		
 		player.openInventory(gui);
 	}
@@ -254,8 +306,7 @@ public class ShanGui {
 		}
 	}
 	
-
-	//
+	// 获取普通内部格子（6行用）
 	private static List<Integer> getInnerSlots(int rows) {
 		List<Integer> slots = new ArrayList<>();
 		int cols = 9;
@@ -263,6 +314,26 @@ public class ShanGui {
 		for (int row = 1; row < rows - 1; row++) {
 			for (int col = 1; col < cols - 1; col++) {
 				slots.add(row * cols + col);
+			}
+		}
+		return slots;
+	}
+	
+	// 获取分页内部格子（7行用，排除第57/61/63格）
+	private static List<Integer> getInnerSlotsPaginated(int rows) {
+		List<Integer> slots = new ArrayList<>();
+		int cols = 9;
+		int lastRow = rows - 1;
+		
+		for (int row = 1; row < lastRow; row++) {
+			for (int col = 1; col < cols - 1; col++) {
+				slots.add(row * cols + col);
+			}
+		}
+		// 最后一行的内部格子（排除分页按钮位置）
+		for (int col = 1; col < cols - 1; col++) {
+			if (col != PREV_PAGE_SLOT % cols && col != NEXT_PAGE_SLOT % cols && col != RETURN_SLOT % cols) {
+				slots.add(lastRow * cols + col);
 			}
 		}
 		return slots;
@@ -322,7 +393,7 @@ public class ShanGui {
 				openPermissionAddGui(player, chestBlock, chestOwners, chestPermissions);
 				break;
 			case 15: 
-				openPermissionRemoveGui(player, chestBlock, chestOwners, chestPermissions);
+				openPermissionRemoveGui(player, chestBlock, chestOwners, chestPermissions, 0);
 				break;
 			case 26: 
 				openBoxManageGui(player, chestBlock, chestOwners);
@@ -333,11 +404,11 @@ public class ShanGui {
 	// 全局权限设置GUI点击
 	public static void handleGlobalPermissionClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Set<UUID>> globalPermissions) {
 		switch (slot) {
-			case 12: 
+			case 11: 
 				openGlobalAddGui(player, chestBlock, chestOwners, globalPermissions);
 				break;
-			case 16: 
-				openGlobalRemoveGui(player, chestBlock, chestOwners, globalPermissions);
+			case 15: 
+				openGlobalRemoveGui(player, chestBlock, chestOwners, globalPermissions, 0);
 				break;
 			case 26: 
 				openBoxManageGui(player, chestBlock, chestOwners);
@@ -386,7 +457,7 @@ public class ShanGui {
 	}
 	
 	// 删除全局权限
-	public static boolean handleGlobalRemoveClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Set<UUID>> globalPermissions, Map<String, Set<UUID>> chestPermissions) {
+	public static boolean handleGlobalRemoveClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Set<UUID>> globalPermissions, Map<String, Set<UUID>> chestPermissions, int currentPage) {
 		UUID ownerUUID = chestOwners.get(getLocationKey(chestBlock));
 		if (ownerUUID == null) {
 			return false;
@@ -397,7 +468,28 @@ public class ShanGui {
 			return false;
 		}
 		
-		if (isInnerSlot(slot, PERMISSION_REMOVE_ROWS)) {
+		// 返回按钮
+		if (slot == RETURN_SLOT) {
+			openGlobalPermissionGui(player, chestBlock, chestOwners);
+			return false;
+		}
+		
+		// 上一页
+		if (slot == PREV_PAGE_SLOT) {
+			int newPage = Math.max(0, currentPage - 1);
+			openGlobalRemoveGui(player, chestBlock, chestOwners, globalPermissions, newPage);
+			return false;
+		}
+		
+		// 下一页
+		if (slot == NEXT_PAGE_SLOT) {
+			int totalPages = Math.max(1, (int) Math.ceil((double) authorizedPlayers.size() / PLAYERS_PER_PAGE));
+			int newPage = Math.min(totalPages - 1, currentPage + 1);
+			openGlobalRemoveGui(player, chestBlock, chestOwners, globalPermissions, newPage);
+			return false;
+		}
+		
+		if (isInnerSlotPaginated(slot, PERMISSION_REMOVE_ROWS)) {
 			Inventory gui = player.getOpenInventory().getTopInventory();
 			ItemStack clickedItem = gui.getItem(slot);
 			
@@ -424,7 +516,10 @@ public class ShanGui {
 							globalPermissions.remove(ownerUUID);
 						}
 						
-						player.closeInventory();
+						// 刷新当前页面
+						int totalPages = Math.max(1, (int) Math.ceil((double) authorizedPlayers.size() / PLAYERS_PER_PAGE));
+						int page = Math.min(currentPage, totalPages - 1);
+						openGlobalRemoveGui(player, chestBlock, chestOwners, globalPermissions, page);
 						return true;
 					}
 				}
@@ -464,8 +559,8 @@ public class ShanGui {
 		return false;
 	}
 	
-	// 权限
-	public static boolean handlePermissionRemoveClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<String, Set<UUID>> chestPermissions) {
+	// 移除权限
+	public static boolean handlePermissionRemoveClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<String, Set<UUID>> chestPermissions, int currentPage) {
 		String locationKey = getLocationKey(chestBlock);
 		Set<UUID> allowedPlayers = chestPermissions.get(locationKey);
 		
@@ -473,12 +568,28 @@ public class ShanGui {
 			return false;
 		}
 		
-		if (slot == 53) {
+		// 返回按钮
+		if (slot == RETURN_SLOT) {
 			openSinglePermissionGui(player, chestBlock, chestOwners);
 			return false;
 		}
 		
-		if (isInnerSlot(slot, PERMISSION_REMOVE_ROWS)) {
+		// 上一页
+		if (slot == PREV_PAGE_SLOT) {
+			int newPage = Math.max(0, currentPage - 1);
+			openPermissionRemoveGui(player, chestBlock, chestOwners, chestPermissions, newPage);
+			return false;
+		}
+		
+		// 下一页
+		if (slot == NEXT_PAGE_SLOT) {
+			int totalPages = Math.max(1, (int) Math.ceil((double) allowedPlayers.size() / PLAYERS_PER_PAGE));
+			int newPage = Math.min(totalPages - 1, currentPage + 1);
+			openPermissionRemoveGui(player, chestBlock, chestOwners, chestPermissions, newPage);
+			return false;
+		}
+		
+		if (isInnerSlotPaginated(slot, PERMISSION_REMOVE_ROWS)) {
 			Inventory gui = player.getOpenInventory().getTopInventory();
 			ItemStack clickedItem = gui.getItem(slot);
 			
@@ -490,7 +601,11 @@ public class ShanGui {
 					OfflinePlayer targetPlayer = Bukkit.getOfflinePlayer(playerName);
 					if (targetPlayer != null && targetPlayer.getUniqueId() != null) {
 						allowedPlayers.remove(targetPlayer.getUniqueId());
-						player.closeInventory();
+						
+						// 刷新当前页面
+						int totalPages = Math.max(1, (int) Math.ceil((double) allowedPlayers.size() / PLAYERS_PER_PAGE));
+						int page = Math.min(currentPage, totalPages - 1);
+						openPermissionRemoveGui(player, chestBlock, chestOwners, chestPermissions, page);
 						return true;
 					}
 				}
@@ -499,8 +614,18 @@ public class ShanGui {
 		return false;
 	}
 	
-	// 判断内部区域
+	// 判断普通内部区域
 	private static boolean isInnerSlot(int slot, int rows) {
+		int row = slot / 9;
+		int col = slot % 9;
+		return row >= 1 && row < rows - 1 && col >= 1 && col <= 7;
+	}
+	
+	// 判断分页内部区域（排除分页按钮格子）
+	private static boolean isInnerSlotPaginated(int slot, int rows) {
+		if (slot == PREV_PAGE_SLOT || slot == NEXT_PAGE_SLOT || slot == RETURN_SLOT) {
+			return false;
+		}
 		int row = slot / 9;
 		int col = slot % 9;
 		return row >= 1 && row < rows - 1 && col >= 1 && col <= 7;
