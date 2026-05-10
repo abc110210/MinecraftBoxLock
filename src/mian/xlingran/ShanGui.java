@@ -520,7 +520,11 @@ public class ShanGui {
 			} else {
 				int newPage = currentPage - 1;
 				playerGuiPages.put(player.getUniqueId(), newPage);
-				openGlobalRemoveGui(player, chestBlock, chestOwners, globalPermissions, newPage);
+				switchingGuiPlayers.add(player.getUniqueId());
+				Bukkit.getScheduler().runTaskLater(plugin, () -> {
+					openGlobalRemoveGui(player, chestBlock, chestOwners, globalPermissions, newPage);
+					switchingGuiPlayers.remove(player.getUniqueId());
+				}, 2L);
 			}
 			return false;
 		}
@@ -530,7 +534,11 @@ public class ShanGui {
 			int totalPages = Math.max(1, (int) Math.ceil((double) (authorizedPlayers != null ? authorizedPlayers.size() : 0) / PLAYERS_PER_PAGE));
 			int newPage = Math.min(totalPages - 1, currentPage + 1);
 			playerGuiPages.put(player.getUniqueId(), newPage);
-			openGlobalRemoveGui(player, chestBlock, chestOwners, globalPermissions, newPage);
+			switchingGuiPlayers.add(player.getUniqueId());
+			Bukkit.getScheduler().runTaskLater(plugin, () -> {
+				openGlobalRemoveGui(player, chestBlock, chestOwners, globalPermissions, newPage);
+				switchingGuiPlayers.remove(player.getUniqueId());
+			}, 2L);
 			return false;
 		}
 		
@@ -570,7 +578,11 @@ public class ShanGui {
 						int totalPages = Math.max(1, (int) Math.ceil((double) authorizedPlayers.size() / PLAYERS_PER_PAGE));
 						int page = Math.min(currentPage, totalPages - 1);
 						playerGuiPages.put(player.getUniqueId(), page);
-						openGlobalRemoveGui(player, chestBlock, chestOwners, globalPermissions, page);
+						switchingGuiPlayers.add(player.getUniqueId());
+						Bukkit.getScheduler().runTaskLater(plugin, () -> {
+							openGlobalRemoveGui(player, chestBlock, chestOwners, globalPermissions, page);
+							switchingGuiPlayers.remove(player.getUniqueId());
+						}, 2L);
 						return true;
 					}
 				}
