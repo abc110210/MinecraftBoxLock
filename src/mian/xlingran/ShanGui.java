@@ -39,7 +39,8 @@ public class ShanGui {
 	// 分页常量
 	private static final int PLAYERS_PER_PAGE = 28; // 每页显示玩家数量 (4行×7列)
 	private static final int NEXT_PAGE_SLOT = 47;   // 下一页按钮 (黄绿色玻璃)
-	private static final int PREV_PAGE_SLOT = 53;   // 上一页/返回按钮 (白玻璃, 第1页时返回上一级)
+	private static final int PREV_PAGE_SLOT = 46;   // 上一页按钮 (白玻璃)
+	private static final int RETURN_SLOT = 53;      // 返回按钮 (白玻璃, 第1页时返回上一级)
 	
 	// 打开箱子管理GUI界面 (3行)
 	public static void openBoxManageGui(Player player, Block chestBlock, Map<String, UUID> chestOwners) {
@@ -203,6 +204,15 @@ public class ShanGui {
 			gui.setItem(PREV_PAGE_SLOT, prevBlank);
 		}
 		
+		// 返回按钮（第1页时显示）
+		if (page == 0) {
+			ItemStack returnButton = createItem(Material.WHITE_STAINED_GLASS_PANE, "§8返回");
+			gui.setItem(RETURN_SLOT, returnButton);
+		} else {
+			ItemStack returnBlank = createItem(Material.WHITE_STAINED_GLASS_PANE, " ");
+			gui.setItem(RETURN_SLOT, returnBlank);
+		}
+		
 		player.openInventory(gui);
 	}
 	
@@ -301,6 +311,15 @@ public class ShanGui {
 		} else {
 			ItemStack prevBlank = createItem(Material.WHITE_STAINED_GLASS_PANE, " ");
 			gui.setItem(PREV_PAGE_SLOT, prevBlank);
+		}
+		
+		// 返回按钮（第1页时显示）
+		if (page == 0) {
+			ItemStack returnButton = createItem(Material.WHITE_STAINED_GLASS_PANE, "§8返回");
+			gui.setItem(RETURN_SLOT, returnButton);
+		} else {
+			ItemStack returnBlank = createItem(Material.WHITE_STAINED_GLASS_PANE, " ");
+			gui.setItem(RETURN_SLOT, returnBlank);
 		}
 		
 		player.openInventory(gui);

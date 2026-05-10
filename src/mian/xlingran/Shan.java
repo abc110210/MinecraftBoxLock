@@ -323,7 +323,7 @@ public class Shan extends JavaPlugin implements Listener {
 				}, 2L);
 			} else {
 				int currentPage = playerGuiPages.getOrDefault(player.getUniqueId(), 0);
-				boolean closed = ShanGui.handlePermissionRemoveClick(player, slot, chestBlock, chestOwners, chestPermissions, playerGuiPages, currentPage);
+				boolean closed = ShanGui.handlePermissionRemoveClick(player, slot, chestBlock, chestOwners, chestPermissions, playerGuiPages, switchingGuiPlayers, currentPage);
 				if (closed) {
 					saveChestData();
 				}
