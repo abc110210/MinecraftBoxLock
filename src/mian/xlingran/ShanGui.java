@@ -191,26 +191,17 @@ public class ShanGui {
 			ItemStack nextButton = createItem(Material.LIME_STAINED_GLASS_PANE, "§d下一页");
 			gui.setItem(NEXT_PAGE_SLOT, nextButton);
 		} else {
-			ItemStack nextBlank = createItem(Material.WHITE_STAINED_GLASS_PANE, " ");
+			ItemStack nextBlank = createItem(Material.LIME_STAINED_GLASS_PANE, "§d下一页");
 			gui.setItem(NEXT_PAGE_SLOT, nextBlank);
 		}
 		
-		// 上一页按钮
+		// 上一页按钮 (黄绿色玻璃, 第1页时返回上一级)
 		if (page > 0) {
-			ItemStack prevButton = createItem(Material.WHITE_STAINED_GLASS_PANE, "§8上一页");
+			ItemStack prevButton = createItem(Material.LIME_STAINED_GLASS_PANE, "§d上一页");
 			gui.setItem(PREV_PAGE_SLOT, prevButton);
 		} else {
-			ItemStack prevBlank = createItem(Material.WHITE_STAINED_GLASS_PANE, " ");
+			ItemStack prevBlank = createItem(Material.LIME_STAINED_GLASS_PANE, "§d返回");
 			gui.setItem(PREV_PAGE_SLOT, prevBlank);
-		}
-		
-		// 返回按钮（第1页时显示）
-		if (page == 0) {
-			ItemStack returnButton = createItem(Material.WHITE_STAINED_GLASS_PANE, "§8返回");
-			gui.setItem(RETURN_SLOT, returnButton);
-		} else {
-			ItemStack returnBlank = createItem(Material.WHITE_STAINED_GLASS_PANE, " ");
-			gui.setItem(RETURN_SLOT, returnBlank);
 		}
 		
 		player.openInventory(gui);
@@ -739,29 +730,11 @@ public class ShanGui {
 	}
 	
 	private static ItemStack createPermissionPlayerHead(Player player, String colorCode) {
-		ItemStack head = new ItemStack(Material.PLAYER_HEAD);
-		SkullMeta meta = (SkullMeta) head.getItemMeta();
-		
-		if (meta != null) {
-			meta.setDisplayName(colorCode + player.getName());
-			meta.setOwningPlayer(player);
-			head.setItemMeta(meta);
-		}
-		
-		return head;
+		return ShanMeta.createCachedPlayerHead(player, colorCode + player.getName());
 	}
 	
 	private static ItemStack createPermissionPlayerHead(OfflinePlayer player, String colorCode) {
-		ItemStack head = new ItemStack(Material.PLAYER_HEAD);
-		SkullMeta meta = (SkullMeta) head.getItemMeta();
-		
-		if (meta != null) {
-			meta.setDisplayName(colorCode + player.getName());
-			meta.setOwningPlayer(player);
-			head.setItemMeta(meta);
-		}
-		
-		return head;
+		return ShanMeta.createCachedPlayerHead(player, colorCode + player.getName());
 	}
 	
 	// 位置

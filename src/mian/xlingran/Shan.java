@@ -26,10 +26,9 @@ import java.util.logging.Level;
 
 public class Shan extends JavaPlugin implements Listener {
 	
-	// 存储箱子位置与所有者的映射关系
+	// 储存箱
 	private Map<String, UUID> chestOwners = new HashMap<>();
 	private Map<String, Set<UUID>> chestPermissions = new HashMap<>();
-	// 存储全局授权关系: owner UUID -> set of authorized player UUIDs
 	private Map<UUID, Set<UUID>> globalPermissions = new HashMap<>();
 	private File dataFile;
 	
@@ -41,6 +40,7 @@ public class Shan extends JavaPlugin implements Listener {
 	@Override
 	public void onEnable() {
 		ShanGui.setPlugin(this);
+		ShanMeta.init(this); // 初始化头颅缓存系统
 		Bukkit.getPluginManager().registerEvents(this, this);
 		
 		// 注册指令
