@@ -53,6 +53,10 @@ public class ShanGui {
 		ItemStack hopper = createItem(Material.HOPPER, "§b漏斗开关");
 		gui.setItem(16, hopper);
 		
+		// 第26格：返回按钮
+		ItemStack returnButton = createItem(Material.LIME_STAINED_GLASS_PANE, "§8返回");
+		gui.setItem(25, returnButton);
+		
 		player.openInventory(gui);
 	}
 	
@@ -75,6 +79,10 @@ public class ShanGui {
 		// 第15格：信标 - 打开取消权限 GUI
 		ItemStack beacon = createItem(Material.BEACON, "§c取消权限");
 		gui.setItem(15, beacon);
+		
+		// 第26格：返回按钮
+		ItemStack returnButton = createItem(Material.LIME_STAINED_GLASS_PANE, "§8返回");
+		gui.setItem(25, returnButton);
 		
 		player.openInventory(gui);
 	}
@@ -109,7 +117,7 @@ public class ShanGui {
 		ItemStack blackGlass = createItem(Material.BLACK_STAINED_GLASS_PANE, " ");
 		fillBorder(gui, PERMISSION_ADD_ROWS, blackGlass);
 		
-		// 内部区域填充玩家头颅
+		// 内部区域填充玩家头颅（只在有玩家时填充，不填充空位）
 		List<Integer> innerSlots = getInnerSlots(PERMISSION_ADD_ROWS);
 		int playerIndex = 0;
 		
@@ -119,11 +127,13 @@ public class ShanGui {
 				ItemStack playerHead = createPermissionPlayerHead(targetPlayer, "§6");
 				gui.setItem(slot, playerHead);
 				playerIndex++;
-			} else {
-				// 没有更多玩家，填充黑色玻璃板
-				gui.setItem(slot, blackGlass);
 			}
+			// 没有玩家时不填充任何物品，保持空槽
 		}
+		
+		// 第54格：返回按钮（索引53）
+		ItemStack returnButton = createItem(Material.LIME_STAINED_GLASS_PANE, "§8返回");
+		gui.setItem(53, returnButton);
 		
 		player.openInventory(gui);
 	}
@@ -148,7 +158,7 @@ public class ShanGui {
 		ItemStack blackGlass = createItem(Material.BLACK_STAINED_GLASS_PANE, " ");
 		fillBorder(gui, PERMISSION_REMOVE_ROWS, blackGlass);
 		
-		// 内部区域填充玩家头颅 (第1-7行, 第1-7列，共 7x7=49格)
+		// 内部区域填充玩家头颅（只在有玩家时填充，不填充空位）
 		List<Integer> innerSlots = getInnerSlots(PERMISSION_REMOVE_ROWS);
 		int playerIndex = 0;
 		
@@ -158,11 +168,13 @@ public class ShanGui {
 				ItemStack playerHead = createPermissionPlayerHead(targetPlayer, "§c");
 				gui.setItem(slot, playerHead);
 				playerIndex++;
-			} else {
-				// 没有更多玩家，填充黑色玻璃板
-				gui.setItem(slot, blackGlass);
 			}
+			// 没有玩家时不填充任何物品，保持空槽
 		}
+		
+		// 第54格：返回按钮（索引53）
+		ItemStack returnButton = createItem(Material.LIME_STAINED_GLASS_PANE, "§8返回");
+		gui.setItem(53, returnButton);
 		
 		player.openInventory(gui);
 	}
@@ -244,6 +256,9 @@ public class ShanGui {
 			case 16: // 漏斗开关
 				player.sendMessage("§b§l§n漏斗开关");
 				break;
+			case 25: // 返回按钮 - 关闭GUI
+				player.closeInventory();
+				break;
 		}
 	}
 	
@@ -258,6 +273,9 @@ public class ShanGui {
 			case 15: // 取消权限 - 打开取消权限 GUI
 				openPermissionRemoveGui(player, chestBlock, chestOwners, chestPermissions);
 				break;
+			case 25: // 返回按钮 - 返回箱子管理GUI
+				openBoxManageGui(player, chestBlock, chestOwners);
+				break;
 		}
 	}
 	
@@ -267,6 +285,12 @@ public class ShanGui {
 	public static boolean handlePermissionAddClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<String, Set<UUID>> chestPermissions) {
 		String locationKey = getLocationKey(chestBlock);
 		Set<UUID> allowedPlayers = chestPermissions.computeIfAbsent(locationKey, k -> new HashSet<>());
+		
+		// 检查是否点击返回按钮（第54格，索引53）
+		if (slot == 53) {
+			openSinglePermissionGui(player, chestBlock, chestOwners);
+			return false;
+		}
 		
 		// 检查点击的是否是内部区域（非边框）
 		if (isInnerSlot(slot, PERMISSION_ADD_ROWS)) {
@@ -302,6 +326,12 @@ public class ShanGui {
 		Set<UUID> allowedPlayers = chestPermissions.get(locationKey);
 		
 		if (allowedPlayers == null) {
+			return false;
+		}
+		
+		// 检查是否点击返回按钮（第54格，索引53）
+		if (slot == 53) {
+			openSinglePermissionGui(player, chestBlock, chestOwners);
 			return false;
 		}
 		
