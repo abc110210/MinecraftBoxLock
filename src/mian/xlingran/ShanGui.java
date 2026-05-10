@@ -10,10 +10,17 @@ import org.bukkit.inventory.ItemFlag;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
+import org.bukkit.plugin.Plugin;
 
 import java.util.*;
 
 public class ShanGui {
+	
+	private static Plugin plugin;
+	
+	public static void setPlugin(Plugin p) {
+		plugin = p;
+	}
 	
 	// GUI名称
 	private static final String BOX_MANAGE_TITLE = "§e箱子管理";
@@ -135,6 +142,10 @@ public class ShanGui {
 				playerIndex++;
 			}
 		}
+		
+		// 返回按钮
+		ItemStack returnButton = createItem(Material.WHITE_STAINED_GLASS_PANE, "§8返回");
+		gui.setItem(53, returnButton);
 		
 		player.openInventory(gui);
 	}
@@ -417,9 +428,19 @@ public class ShanGui {
 	}
 	
 	// 添加全局权限
-	public static boolean handleGlobalAddClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Set<UUID>> globalPermissions, Map<String, Set<UUID>> chestPermissions) {
+	public static boolean handleGlobalAddClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Set<UUID>> globalPermissions, Map<String, Set<UUID>> chestPermissions, Set<UUID> switchingGuiPlayers) {
 		UUID ownerUUID = chestOwners.get(getLocationKey(chestBlock));
 		if (ownerUUID == null) {
+			return false;
+		}
+		
+		// 返回按钮
+		if (slot == 53) {
+			switchingGuiPlayers.add(player.getUniqueId());
+			Bukkit.getScheduler().runTaskLater(plugin, () -> {
+				openGlobalPermissionGui(player, chestBlock, chestOwners);
+				switchingGuiPlayers.remove(player.getUniqueId());
+			}, 2L);
 			return false;
 		}
 		
@@ -457,7 +478,7 @@ public class ShanGui {
 	}
 	
 	// 删除全局权限
-	public static boolean handleGlobalRemoveClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Set<UUID>> globalPermissions, Map<String, Set<UUID>> chestPermissions, Map<UUID, Integer> playerGuiPages, int currentPage) {
+	public static boolean handleGlobalRemoveClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Set<UUID>> globalPermissions, Map<String, Set<UUID>> chestPermissions, Map<UUID, Integer> playerGuiPages, Set<UUID> switchingGuiPlayers, int currentPage) {
 		UUID ownerUUID = chestOwners.get(getLocationKey(chestBlock));
 		if (ownerUUID == null) {
 			return false;
@@ -471,7 +492,11 @@ public class ShanGui {
 		// 返回按钮
 		if (slot == RETURN_SLOT) {
 			playerGuiPages.remove(player.getUniqueId());
-			openGlobalPermissionGui(player, chestBlock, chestOwners);
+			switchingGuiPlayers.add(player.getUniqueId());
+			Bukkit.getScheduler().runTaskLater(plugin, () -> {
+				openGlobalPermissionGui(player, chestBlock, chestOwners);
+				switchingGuiPlayers.remove(player.getUniqueId());
+			}, 2L);
 			return false;
 		}
 		

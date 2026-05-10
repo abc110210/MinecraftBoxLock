@@ -40,6 +40,7 @@ public class Shan extends JavaPlugin implements Listener {
 	
 	@Override
 	public void onEnable() {
+		ShanGui.setPlugin(this);
 		Bukkit.getPluginManager().registerEvents(this, this);
 		
 		// 注册指令
@@ -276,7 +277,7 @@ public class Shan extends JavaPlugin implements Listener {
 		}
 		else if (ShanGui.isGlobalAddGui(title)) {
 			event.setCancelled(true);
-			boolean closed = ShanGui.handleGlobalAddClick(player, slot, chestBlock, chestOwners, globalPermissions, chestPermissions);
+			boolean closed = ShanGui.handleGlobalAddClick(player, slot, chestBlock, chestOwners, globalPermissions, chestPermissions, switchingGuiPlayers);
 			if (closed) {
 				saveChestData();
 			}
@@ -284,7 +285,7 @@ public class Shan extends JavaPlugin implements Listener {
 		else if (ShanGui.isGlobalRemoveGui(title)) {
 			event.setCancelled(true);
 			int currentPage = playerGuiPages.getOrDefault(player.getUniqueId(), 0);
-			boolean closed = ShanGui.handleGlobalRemoveClick(player, slot, chestBlock, chestOwners, globalPermissions, chestPermissions, playerGuiPages, currentPage);
+			boolean closed = ShanGui.handleGlobalRemoveClick(player, slot, chestBlock, chestOwners, globalPermissions, chestPermissions, playerGuiPages, switchingGuiPlayers, currentPage);
 			if (closed) {
 				saveChestData();
 			}
