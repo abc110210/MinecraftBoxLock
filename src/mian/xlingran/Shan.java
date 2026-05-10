@@ -63,10 +63,16 @@ public class Shan extends JavaPlugin implements Listener {
 	public void onDisable() {
 		// 保存
 		saveChestData();
-		Bukkit.getConsoleSender().sendMessage("§a欢迎使用 §b箱子锁 §a插件,交流群: 943446220");
+		Bukkit.getConsoleSender().sendMessage("§a箱子锁插件已关闭，交流群: 943446220");
 	}
 	
 	//监听防止事件
+	@EventHandler
+	public void onPlayerJoin(org.bukkit.event.player.PlayerJoinEvent event) {
+		// 玩家加入时预缓存头颅数据，避免后续 GUI 打开时频繁请求 Mojang API
+		ShanMeta.precachePlayerHead(event.getPlayer());
+	}
+	
 	@EventHandler
 	public void onBlockPlace(BlockPlaceEvent event) {
 		Block block = event.getBlock();

@@ -2,6 +2,7 @@ package mian.xlingran;
 
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.plugin.Plugin;
@@ -22,8 +23,9 @@ public class ShanMeta {
 	private static File cacheFile;
 	private static Map<UUID, CachedHead> headCache = new HashMap<>();
 	
-	// 缓存过期时间（毫秒），默认24小时
-	private static final long CACHE_EXPIRY_TIME = 24 * 60 * 60 * 1000;
+	// 防抖保存相关
+	private static volatile boolean saveScheduled = false;
+	private static final long SAVE_DELAY_TICKS = 100L; // 5秒后保存
 	
 	/**
 	 * 初始化缓存系统
@@ -75,8 +77,9 @@ public class ShanMeta {
 	public static ItemStack createCachedPlayerHeadByName(String playerName, String displayName) {
 		// 先从缓存中查找是否有该玩家的记录
 		for (Map.Entry<UUID, CachedHead> entry : headCache.entrySet()) {
-			if (entry.getValue().playerName != null && entry.getValue().playerName.equals(playerName)) {
-				if (!entry.getValue().isExpired()) {
+			CachedHead value = entry.getValue();
+			if (value != null && value.getPlayerName() != null && value.getPlayerName().equals(playerName)) {
+				if (!value.isExpired()) {
 					// 使用缓存的 UUID 获取玩家对象
 					OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(entry.getKey());
 					return createCachedPlayerHead(offlinePlayer, displayName);
@@ -100,7 +103,7 @@ public class ShanMeta {
 			meta.setDisplayName(displayName);
 			
 			// 使用缓存的 UUID 获取玩家对象
-			OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(cachedHead.uuid);
+			OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(cachedHead.getUuid());
 			meta.setOwningPlayer(offlinePlayer);
 			
 			head.setItemMeta(meta);
@@ -114,20 +117,78 @@ public class ShanMeta {
 	 */
 	private static void updateCache(UUID uuid, String playerName) {
 		headCache.put(uuid, new CachedHead(uuid, playerName, System.currentTimeMillis()));
-		saveCache();
+		scheduleSave();
+	}
+	
+	/**
+	 * 防抖保存缓存（避免频繁IO）
+	 */
+	private static void scheduleSave() {
+		if (saveScheduled) {
+			return; // 已经有保存任务在排队
+		}
+		
+		saveScheduled = true;
+		Bukkit.getScheduler().runTaskLater(plugin, () -> {
+			saveCache();
+			saveScheduled = false;
+		}, SAVE_DELAY_TICKS);
+	}
+	
+	/**
+	 * 预缓存玩家头颅（玩家加入时调用）
+	 * @param player 在线玩家对象
+	 */
+	public static void precachePlayerHead(Player player) {
+		if (player == null) {
+			return;
+		}
+		
+		UUID playerUUID = player.getUniqueId();
+		String playerName = player.getName();
+		
+		// 检查缓存是否已存在且有效
+		CachedHead cachedHead = headCache.get(playerUUID);
+		if (cachedHead != null && !cachedHead.isExpired()) {
+			// 缓存有效，只需要更新时间戳
+			cachedHead.setTimestamp(System.currentTimeMillis());
+			// 延迟保存，避免频繁IO
+			scheduleSave();
+			return;
+		}
+		
+		// 使用延迟任务预缓存，给服务器一些缓冲时间
+		Bukkit.getScheduler().runTaskLaterAsynchronously(plugin, () -> {
+			try {
+				// 创建临时头颅来触发 Bukkit 的玩家数据加载
+				// 这会从 Mojang 获取玩家纹理数据并缓存到服务器
+				ItemStack head = new ItemStack(org.bukkit.Material.PLAYER_HEAD);
+				SkullMeta meta = (SkullMeta) head.getItemMeta();
+				
+				if (meta != null) {
+					// 设置玩家所有者，这会触发一次 Mojang API 请求
+					meta.setOwningPlayer(player);
+					head.setItemMeta(meta);
+					
+					// 更新缓存
+					headCache.put(playerUUID, new CachedHead(playerUUID, playerName, System.currentTimeMillis()));
+					saveCache();
+					
+					plugin.getLogger().info("已预缓存玩家头颅: " + playerName + " (" + playerUUID + ")");
+				}
+			} catch (Exception e) {
+				plugin.getLogger().log(Level.WARNING, "预缓存玩家头颅失败: " + playerName, e);
+			}
+		}, 20L); // 延迟1秒执行，避免玩家刚加入就请求
 	}
 	
 	/**
 	 * 清理过期缓存
 	 */
 	public static void cleanExpiredCache() {
-		int removedCount = 0;
-		for (Map.Entry<UUID, CachedHead> entry : headCache.entrySet()) {
-			if (entry.getValue().isExpired()) {
-				headCache.remove(entry.getKey());
-				removedCount++;
-			}
-		}
+		int before = headCache.size();
+		headCache.values().removeIf(CachedHead::isExpired);
+		int removedCount = before - headCache.size();
 		
 		if (removedCount > 0) {
 			saveCache();
@@ -199,26 +260,5 @@ public class ShanMeta {
 		
 		return String.format("头颅缓存统计 - 有效: %d, 过期: %d, 总计: %d", 
 			validCount, expiredCount, headCache.size());
-	}
-	
-	/**
-	 * 缓存的头颅数据结构
-	 */
-	private static class CachedHead implements Serializable {
-		private static final long serialVersionUID = 1L;
-		
-		UUID uuid;
-		String playerName;
-		long timestamp;
-		
-		CachedHead(UUID uuid, String playerName, long timestamp) {
-			this.uuid = uuid;
-			this.playerName = playerName;
-			this.timestamp = timestamp;
-		}
-		
-		boolean isExpired() {
-			return System.currentTimeMillis() - timestamp > CACHE_EXPIRY_TIME;
-		}
 	}
 }
