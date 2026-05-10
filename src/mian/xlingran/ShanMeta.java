@@ -8,9 +8,11 @@ import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.plugin.Plugin;
 
 import java.io.*;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 
 /**
@@ -21,7 +23,8 @@ public class ShanMeta {
 	
 	private static Plugin plugin;
 	private static File cacheFile;
-	private static Map<UUID, CachedHead> headCache = new HashMap<>();
+	// 使用 ConcurrentHashMap 保证线程安全
+	private static Map<UUID, CachedHead> headCache = new ConcurrentHashMap<>();
 	
 	// 防抖保存相关
 	private static volatile boolean saveScheduled = false;
@@ -43,6 +46,17 @@ public class ShanMeta {
 	 * @return 玩家头颅物品
 	 */
 	public static ItemStack createCachedPlayerHead(OfflinePlayer player, String displayName) {
+		if (player == null) {
+			// 创建空头颅作为后备
+			ItemStack head = new ItemStack(org.bukkit.Material.PLAYER_HEAD);
+			SkullMeta meta = (SkullMeta) head.getItemMeta();
+			if (meta != null) {
+				meta.setDisplayName(displayName);
+				head.setItemMeta(meta);
+			}
+			return head;
+		}
+		
 		UUID playerUUID = player.getUniqueId();
 		
 		// 检查缓存是否有效
@@ -53,19 +67,33 @@ public class ShanMeta {
 		}
 		
 		// 缓存无效或不存在，从 Bukkit API 获取
-		ItemStack head = new ItemStack(org.bukkit.Material.PLAYER_HEAD);
-		SkullMeta meta = (SkullMeta) head.getItemMeta();
-		
-		if (meta != null) {
-			meta.setDisplayName(displayName);
-			meta.setOwningPlayer(player);
-			head.setItemMeta(meta);
+		try {
+			ItemStack head = new ItemStack(org.bukkit.Material.PLAYER_HEAD);
+			SkullMeta meta = (SkullMeta) head.getItemMeta();
 			
-			// 更新缓存
-			updateCache(playerUUID, player.getName());
+			if (meta != null) {
+				meta.setDisplayName(displayName);
+				meta.setOwningPlayer(player);
+				head.setItemMeta(meta);
+				
+				// 更新缓存
+				updateCache(playerUUID, player.getName());
+			}
+			
+			return head;
+		} catch (Exception e) {
+			if (plugin != null) {
+				plugin.getLogger().log(Level.WARNING, "创建玩家头颅失败: " + player.getName(), e);
+			}
+			// 返回空头颅作为后备
+			ItemStack head = new ItemStack(org.bukkit.Material.PLAYER_HEAD);
+			SkullMeta meta = (SkullMeta) head.getItemMeta();
+			if (meta != null) {
+				meta.setDisplayName(displayName);
+				head.setItemMeta(meta);
+			}
+			return head;
 		}
-		
-		return head;
 	}
 	
 	/**
@@ -103,6 +131,7 @@ public class ShanMeta {
 			meta.setDisplayName(displayName);
 			
 			// 使用缓存的 UUID 获取玩家对象
+			// 注意：这可能会触发一次网络请求，但 Bukkit 会缓存结果
 			OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(cachedHead.getUuid());
 			meta.setOwningPlayer(offlinePlayer);
 			
@@ -113,9 +142,9 @@ public class ShanMeta {
 	}
 	
 	/**
-	 * 更新缓存
+	 * 更新缓存（线程安全）
 	 */
-	private static void updateCache(UUID uuid, String playerName) {
+	private static synchronized void updateCache(UUID uuid, String playerName) {
 		headCache.put(uuid, new CachedHead(uuid, playerName, System.currentTimeMillis()));
 		scheduleSave();
 	}
@@ -123,14 +152,16 @@ public class ShanMeta {
 	/**
 	 * 防抖保存缓存（避免频繁IO）
 	 */
-	private static void scheduleSave() {
+	private static synchronized void scheduleSave() {
 		if (saveScheduled) {
 			return; // 已经有保存任务在排队
 		}
 		
 		saveScheduled = true;
 		Bukkit.getScheduler().runTaskLater(plugin, () -> {
-			saveCache();
+			// 创建快照，避免保存时数据被修改
+			Map<UUID, CachedHead> snapshot = new HashMap<>(headCache);
+			saveCache(snapshot);
 			saveScheduled = false;
 		}, SAVE_DELAY_TICKS);
 	}
@@ -140,7 +171,7 @@ public class ShanMeta {
 	 * @param player 在线玩家对象
 	 */
 	public static void precachePlayerHead(Player player) {
-		if (player == null) {
+		if (player == null || plugin == null) {
 			return;
 		}
 		
@@ -170,9 +201,9 @@ public class ShanMeta {
 					meta.setOwningPlayer(player);
 					head.setItemMeta(meta);
 					
-					// 更新缓存
+					// 更新缓存（同步更新）
 					headCache.put(playerUUID, new CachedHead(playerUUID, playerName, System.currentTimeMillis()));
-					saveCache();
+					scheduleSave();
 					
 					plugin.getLogger().info("已预缓存玩家头颅: " + playerName + " (" + playerUUID + ")");
 				}
@@ -183,25 +214,26 @@ public class ShanMeta {
 	}
 	
 	/**
-	 * 清理过期缓存
+	 * 清理过期缓存（线程安全）
 	 */
-	public static void cleanExpiredCache() {
+	public static synchronized void cleanExpiredCache() {
 		int before = headCache.size();
 		headCache.values().removeIf(CachedHead::isExpired);
 		int removedCount = before - headCache.size();
 		
 		if (removedCount > 0) {
-			saveCache();
+			saveCache(new HashMap<>(headCache));
 			plugin.getLogger().info("已清理 " + removedCount + " 个过期的头颅缓存");
 		}
 	}
 	
 	/**
 	 * 保存缓存到文件
+	 * @param dataToSave 要保存的数据快照
 	 */
-	private static void saveCache() {
+	private static void saveCache(Map<UUID, CachedHead> dataToSave) {
 		try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(cacheFile))) {
-			oos.writeObject(headCache);
+			oos.writeObject(dataToSave);
 		} catch (IOException e) {
 			plugin.getLogger().log(Level.WARNING, "无法保存头颅缓存", e);
 		}
@@ -232,7 +264,7 @@ public class ShanMeta {
 			if (cacheFile.exists()) {
 				cacheFile.delete();
 			}
-		} catch (IOException e) {
+		} catch (IOException | ClassCastException e) {
 			plugin.getLogger().log(Level.WARNING, "无法加载头颅缓存，将重建缓存", e);
 			// 如果加载失败，清空缓存
 			headCache.clear();

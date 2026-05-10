@@ -204,6 +204,10 @@ public class ShanGui {
 			gui.setItem(PREV_PAGE_SLOT, prevBlank);
 		}
 		
+		// 返回按钮（始终显示在右下角）
+		ItemStack returnButton = createItem(Material.WHITE_STAINED_GLASS_PANE, "§8返回");
+		gui.setItem(RETURN_SLOT, returnButton);
+		
 		player.openInventory(gui);
 	}
 	

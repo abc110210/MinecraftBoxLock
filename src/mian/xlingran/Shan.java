@@ -56,41 +56,36 @@ public class Shan extends JavaPlugin implements Listener {
 		// 加载数据
 		loadChestData();
 		
-		// 设置控制台编码为 UTF-8，避免 Windows 乱码
-		setupConsoleEncoding();
-		
-		Bukkit.getConsoleSender().sendMessage("§a欢迎使用 §b箱子锁 §a插件,交流群: 943446220");
+		// 使用 Logger 输出，去掉 § 颜色代码避免 CMD 编码冲突
+		getLogger().info("欢迎使用 箱子锁 插件,交流群: 943446220");
 	}
 	
 	@Override
 	public void onDisable() {
 		// 保存
 		saveChestData();
-		Bukkit.getConsoleSender().sendMessage("§c箱子锁插件已关闭，交流群: 943446220");
+		// 使用 Logger 输出，去掉 § 颜色代码避免 CMD 编码冲突
+		getLogger().info("箱子锁插件已关闭，交流群: 943446220");
 	}
 	
 	/**
 	 * 设置控制台编码，解决 Windows 乱码问题
+	 * @param message 要输出的消息（会自动移除 § 颜色代码）
 	 */
-	private void setupConsoleEncoding() {
-		try {
-			// 检测是否为 Windows 系统
-			String os = System.getProperty("os.name").toLowerCase();
-			if (os.contains("win")) {
-				// Windows 系统设置 UTF-8 编码
-				System.setProperty("file.encoding", "UTF-8");
-				System.setProperty("sun.jnu.encoding", "UTF-8");
-				
-				// 设置控制台代码页为 UTF-8 (65001)
-				try {
-					Runtime.getRuntime().exec("cmd /c chcp 65001");
-				} catch (Exception e) {
-					// 忽略执行失败
-				}
-			}
-		} catch (Exception e) {
-			// 忽略编码设置失败
-		}
+	private void logInfo(String message) {
+		// 移除颜色代码，避免 CMD 编码冲突
+		String cleanMessage = message.replace("§a", "")
+		                              .replace("§b", "")
+		                              .replace("§c", "")
+		                              .replace("§d", "")
+		                              .replace("§e", "")
+		                              .replace("§f", "")
+		                              .replace("§6", "")
+		                              .replace("§8", "")
+		                              .replace("§9", "")
+		                              .replace("§r", "")
+		                              .replace("§l", "");
+		getLogger().info(cleanMessage);
 	}
 	
 	//监听防止事件
