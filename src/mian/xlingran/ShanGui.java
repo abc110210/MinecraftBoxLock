@@ -38,9 +38,9 @@ public class ShanGui {
 	private static final int GLOBAL_ROWS = 3;   // 全局权限设置 3行
 	// 分页常量
 	private static final int PLAYERS_PER_PAGE = 28; // 每页显示玩家数量 (4行×7列)
-	private static final int NEXT_PAGE_SLOT = 47;   // 下一页按钮 (黄绿色玻璃)
-	private static final int PREV_PAGE_SLOT = 46;   // 上一页按钮 (白玻璃)
-	private static final int RETURN_SLOT = 53;      // 返回按钮 (白玻璃, 第1页时返回上一级)
+	private static final int PREV_PAGE_SLOT = 47;   // 上一页按钮 (倒数第7格, 黄绿色玻璃)
+	private static final int NEXT_PAGE_SLOT = 51;   // 下一页按钮 (倒数第3格, 黄绿色玻璃)
+	private static final int RETURN_SLOT = 53;      // 返回按钮 (全局权限GUI使用)
 	
 	// 打开箱子管理GUI界面 (3行)
 	public static void openBoxManageGui(Player player, Block chestBlock, Map<String, UUID> chestOwners) {
@@ -300,26 +300,17 @@ public class ShanGui {
 			ItemStack nextButton = createItem(Material.LIME_STAINED_GLASS_PANE, "§d下一页");
 			gui.setItem(NEXT_PAGE_SLOT, nextButton);
 		} else {
-			ItemStack nextBlank = createItem(Material.WHITE_STAINED_GLASS_PANE, " ");
+			ItemStack nextBlank = createItem(Material.LIME_STAINED_GLASS_PANE, "§d下一页");
 			gui.setItem(NEXT_PAGE_SLOT, nextBlank);
 		}
 		
-		// 上一页按钮
+		// 上一页按钮 (黄绿色玻璃, 第1页时返回上一级)
 		if (page > 0) {
-			ItemStack prevButton = createItem(Material.WHITE_STAINED_GLASS_PANE, "§8上一页");
+			ItemStack prevButton = createItem(Material.LIME_STAINED_GLASS_PANE, "§d上一页");
 			gui.setItem(PREV_PAGE_SLOT, prevButton);
 		} else {
-			ItemStack prevBlank = createItem(Material.WHITE_STAINED_GLASS_PANE, " ");
+			ItemStack prevBlank = createItem(Material.LIME_STAINED_GLASS_PANE, "§d返回");
 			gui.setItem(PREV_PAGE_SLOT, prevBlank);
-		}
-		
-		// 返回按钮（第1页时显示）
-		if (page == 0) {
-			ItemStack returnButton = createItem(Material.WHITE_STAINED_GLASS_PANE, "§8返回");
-			gui.setItem(RETURN_SLOT, returnButton);
-		} else {
-			ItemStack returnBlank = createItem(Material.WHITE_STAINED_GLASS_PANE, " ");
-			gui.setItem(RETURN_SLOT, returnBlank);
 		}
 		
 		player.openInventory(gui);
@@ -619,13 +610,6 @@ public class ShanGui {
 		Set<UUID> allowedPlayers = chestPermissions.get(locationKey);
 		
 		if (allowedPlayers == null) {
-			return false;
-		}
-		
-		// 返回按钮
-		if (slot == RETURN_SLOT) {
-			playerGuiPages.remove(player.getUniqueId());
-			openSinglePermissionGui(player, chestBlock, chestOwners);
 			return false;
 		}
 		
