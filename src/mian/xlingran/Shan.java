@@ -2,7 +2,6 @@ package mian.xlingran;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
-import org.bukkit.OfflinePlayer;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -16,10 +15,6 @@ import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryMoveItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.ItemFlag;
-import org.bukkit.inventory.ItemStack;
-import org.bukkit.inventory.meta.ItemMeta;
-import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.*;
@@ -40,11 +35,6 @@ public class Shan extends JavaPlugin implements Listener {
 	private Set<UUID> guiOpeningPlayers = new HashSet<>();
 	// 临时存储玩家打开的箱子位置，用于关闭 GUI 时更新状态
 	private Map<UUID, String> playerOpenedChests = new HashMap<>();
-	
-	// GUI 界面标题
-	private static final String GUI_TITLE = "§e箱子管理";
-	// GUI 行数（3行 = 27格）
-	private static final int GUI_ROWS = 3;
 	
 	@Override
 	public void onEnable() {
@@ -243,14 +233,6 @@ public class Shan extends JavaPlugin implements Listener {
 		}
 		
 		String title = event.getView().getTitle();
-		if (!title.equals(GUI_TITLE)) {
-			return;
-		}
-		
-		// 阻止在箱子管理 GUI 中操作物品
-		event.setCancelled(true);
-		
-		// 处理按钮点击逻辑
 		Player player = (Player) event.getWhoClicked();
 		int slot = event.getRawSlot();
 		String chestLocation = playerOpenedChests.get(player.getUniqueId());
@@ -259,23 +241,20 @@ public class Shan extends JavaPlugin implements Listener {
 			return;
 		}
 		
-		switch (slot) {
-			case 10: // 单独权限
-				player.sendMessage("§a§l§n单独权限");
-				// 后续可扩展单独权限功能
-				break;
-			case 12: // 批量权限
-				player.sendMessage("§e§l§n批量权限");
-				// 后续可扩展批量权限功能
-				break;
-			case 14: // 锁定开关
-				player.sendMessage("§c§l§n锁定开关");
-				// 后续可扩展锁定开关功能
-				break;
-			case 16: // 漏斗开关
-				player.sendMessage("§b§l§n漏斗开关");
-				// 后续可扩展漏斗开关功能
-				break;
+		Block chestBlock = parseBlockLocation(player, chestLocation);
+		if (chestBlock == null) {
+			return;
+		}
+		
+		// 箱子管理 GUI
+		if (ShanGui.isBoxManageGui(title)) {
+			event.setCancelled(true);
+			ShanGui.handleBoxManageClick(player, slot, chestBlock, chestOwners);
+		}
+		// 单独权限设置 GUI
+		else if (ShanGui.isSinglePermissionGui(title)) {
+			event.setCancelled(true);
+			ShanGui.handleSinglePermissionClick(player, slot);
 		}
 	}
 	
@@ -289,7 +268,7 @@ public class Shan extends JavaPlugin implements Listener {
 		}
 		
 		String title = event.getView().getTitle();
-		if (!title.equals(GUI_TITLE)) {
+		if (!ShanGui.isBoxManageGui(title) && !ShanGui.isSinglePermissionGui(title)) {
 			return;
 		}
 		
@@ -312,78 +291,36 @@ public class Shan extends JavaPlugin implements Listener {
 			guiOpeningPlayers.remove(player.getUniqueId());
 		}, 1L);
 		
-		Inventory gui = Bukkit.createInventory(null, GUI_ROWS * 9, GUI_TITLE);
-		
-		// 黑色玻璃板填充
-		ItemStack blackGlass = createItem(Material.BLACK_STAINED_GLASS_PANE, " ", null);
-		for (int i = 0; i < 27; i++) {
-			gui.setItem(i, blackGlass);
-		}
-		
-		// 第10格：箱子所有者的头颅
-		ItemStack ownerHead = createPlayerHead(chestBlock);
-		gui.setItem(10, ownerHead);
-		
-		// 第12格：末影箱
-		ItemStack enderChest = createItem(Material.ENDER_CHEST, "§e批量权限", null);
-		gui.setItem(12, enderChest);
-		
-		// 第14格：箱子
-		ItemStack chest = createItem(Material.CHEST, "§c锁定开关", null);
-		gui.setItem(14, chest);
-		
-		// 第16格：漏斗
-		ItemStack hopper = createItem(Material.HOPPER, "§b漏斗开关", null);
-		gui.setItem(16, hopper);
-		
-		player.openInventory(gui);
+		ShanGui.openBoxManageGui(player, chestBlock, chestOwners);
 	}
 	
 	/**
-	 * 创建物品
+	 * 从位置字符串解析 Block 对象
 	 */
-	private ItemStack createItem(Material material, String name, String... lore) {
-		ItemStack item = new ItemStack(material);
-		ItemMeta meta = item.getItemMeta();
-		if (meta != null) {
-			if (name != null) {
-				meta.setDisplayName(name);
-			}
-			if (lore != null && lore.length > 0) {
-				java.util.List<String> loreList = new java.util.ArrayList<>();
-				for (String line : lore) {
-					loreList.add(line);
-				}
-				meta.setLore(loreList);
-			}
-			meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
-			item.setItemMeta(meta);
-		}
-		return item;
-	}
-	
-	/**
-	 * 创建玩家头颅
-	 */
-	private ItemStack createPlayerHead(Block chestBlock) {
-		String locationKey = getLocationKey(chestBlock);
-		UUID ownerUUID = chestOwners.get(locationKey);
-		
-		ItemStack head = new ItemStack(Material.PLAYER_HEAD);
-		SkullMeta meta = (SkullMeta) head.getItemMeta();
-		
-		if (meta != null) {
-			meta.setDisplayName("§a单独权限");
-			
-			if (ownerUUID != null) {
-				OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(ownerUUID);
-				meta.setOwningPlayer(offlinePlayer);
-			}
-			
-			head.setItemMeta(meta);
+	private Block parseBlockLocation(Player player, String locationKey) {
+		String[] parts = locationKey.split(":");
+		if (parts.length != 2) {
+			return null;
 		}
 		
-		return head;
+		org.bukkit.World world = Bukkit.getWorld(parts[0]);
+		if (world == null) {
+			return null;
+		}
+		
+		String[] coords = parts[1].split(",");
+		if (coords.length != 3) {
+			return null;
+		}
+		
+		try {
+			int x = Integer.parseInt(coords[0]);
+			int y = Integer.parseInt(coords[1]);
+			int z = Integer.parseInt(coords[2]);
+			return world.getBlockAt(x, y, z);
+		} catch (NumberFormatException e) {
+			return null;
+		}
 	}
 	
 	/**
