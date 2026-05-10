@@ -37,10 +37,9 @@ public class ShanGui {
 	private static final int PERMISSION_REMOVE_ROWS = 6; // 54格 (带分页)
 	private static final int GLOBAL_ROWS = 3;   // 全局权限设置 3行
 	// 分页常量
-	private static final int PLAYERS_PER_PAGE = 33; // 每页显示玩家数量 (6行GUI, 最后一行3个导航按钮)
-	private static final int PREV_PAGE_SLOT = 48;   // 上一页按钮 (第49格)
-	private static final int NEXT_PAGE_SLOT = 50;   // 下一页按钮 (第51格)
-	private static final int RETURN_SLOT = 53;      // 返回按钮 (第54格)
+	private static final int PLAYERS_PER_PAGE = 28; // 每页显示玩家数量 (4行×7列)
+	private static final int NEXT_PAGE_SLOT = 47;   // 下一页按钮 (黄绿色玻璃)
+	private static final int PREV_PAGE_SLOT = 53;   // 上一页/返回按钮 (白玻璃, 第1页时返回上一级)
 	
 	// 打开箱子管理GUI界面 (3行)
 	public static void openBoxManageGui(Player player, Block chestBlock, Map<String, UUID> chestOwners) {
@@ -186,21 +185,23 @@ public class ShanGui {
 			}
 		}
 		
-		// 上一页按钮 (第57格)
-		if (page > 0) {
-			ItemStack prevButton = createItem(Material.ARROW, "§a上一页");
-			gui.setItem(PREV_PAGE_SLOT, prevButton);
-		}
-		
-		// 下一页按钮 (第61格)
+		// 下一页按钮 (黄绿色玻璃)
 		if (page < totalPages - 1) {
-			ItemStack nextButton = createItem(Material.ARROW, "§a下一页");
+			ItemStack nextButton = createItem(Material.LIME_STAINED_GLASS_PANE, "§d下一页");
 			gui.setItem(NEXT_PAGE_SLOT, nextButton);
+		} else {
+			ItemStack nextBlank = createItem(Material.WHITE_STAINED_GLASS_PANE, " ");
+			gui.setItem(NEXT_PAGE_SLOT, nextBlank);
 		}
 		
-		// 返回按钮 (第63格)
-		ItemStack returnButton = createItem(Material.WHITE_STAINED_GLASS_PANE, "§8返回");
-		gui.setItem(RETURN_SLOT, returnButton);
+		// 上一页按钮
+		if (page > 0) {
+			ItemStack prevButton = createItem(Material.WHITE_STAINED_GLASS_PANE, "§8上一页");
+			gui.setItem(PREV_PAGE_SLOT, prevButton);
+		} else {
+			ItemStack prevBlank = createItem(Material.WHITE_STAINED_GLASS_PANE, " ");
+			gui.setItem(PREV_PAGE_SLOT, prevBlank);
+		}
 		
 		player.openInventory(gui);
 	}
@@ -284,21 +285,23 @@ public class ShanGui {
 			}
 		}
 		
-		// 上一页按钮 (第57格)
-		if (page > 0) {
-			ItemStack prevButton = createItem(Material.ARROW, "§a上一页");
-			gui.setItem(PREV_PAGE_SLOT, prevButton);
-		}
-		
-		// 下一页按钮 (第61格)
+		// 下一页按钮 (黄绿色玻璃)
 		if (page < totalPages - 1) {
-			ItemStack nextButton = createItem(Material.ARROW, "§a下一页");
+			ItemStack nextButton = createItem(Material.LIME_STAINED_GLASS_PANE, "§d下一页");
 			gui.setItem(NEXT_PAGE_SLOT, nextButton);
+		} else {
+			ItemStack nextBlank = createItem(Material.WHITE_STAINED_GLASS_PANE, " ");
+			gui.setItem(NEXT_PAGE_SLOT, nextBlank);
 		}
 		
-		// 返回按钮 (第63格)
-		ItemStack returnButton = createItem(Material.WHITE_STAINED_GLASS_PANE, "§8返回");
-		gui.setItem(RETURN_SLOT, returnButton);
+		// 上一页按钮
+		if (page > 0) {
+			ItemStack prevButton = createItem(Material.WHITE_STAINED_GLASS_PANE, "§8上一页");
+			gui.setItem(PREV_PAGE_SLOT, prevButton);
+		} else {
+			ItemStack prevBlank = createItem(Material.WHITE_STAINED_GLASS_PANE, " ");
+			gui.setItem(PREV_PAGE_SLOT, prevBlank);
+		}
 		
 		player.openInventory(gui);
 	}
@@ -330,21 +333,14 @@ public class ShanGui {
 		return slots;
 	}
 	
-	// 获取分页内部格子（6行用，排除第49/51/54格）
+	// 获取分页内部格子（6行用，排除最后一行导航区域）
 	private static List<Integer> getInnerSlotsPaginated(int rows) {
 		List<Integer> slots = new ArrayList<>();
 		int cols = 9;
-		int lastRow = rows - 1;
-		
-		for (int row = 1; row < lastRow; row++) {
+		// 只取第2-5行的内部格子 (4行 × 7列 = 28格)
+		for (int row = 1; row < rows - 1; row++) {
 			for (int col = 1; col < cols - 1; col++) {
 				slots.add(row * cols + col);
-			}
-		}
-		// 最后一行的内部格子（排除分页按钮位置）
-		for (int col = 1; col < cols - 1; col++) {
-			if (col != PREV_PAGE_SLOT % cols && col != NEXT_PAGE_SLOT % cols && col != RETURN_SLOT % cols) {
-				slots.add(lastRow * cols + col);
 			}
 		}
 		return slots;
@@ -500,11 +496,21 @@ public class ShanGui {
 			return false;
 		}
 		
-		// 上一页
+		// 上一页/返回 (第1页时返回上一级, 其他页时返回上一页)
 		if (slot == PREV_PAGE_SLOT) {
-			int newPage = Math.max(0, currentPage - 1);
-			playerGuiPages.put(player.getUniqueId(), newPage);
-			openGlobalRemoveGui(player, chestBlock, chestOwners, globalPermissions, newPage);
+			if (currentPage == 0) {
+				// 返回上一级GUI
+				playerGuiPages.remove(player.getUniqueId());
+				switchingGuiPlayers.add(player.getUniqueId());
+				Bukkit.getScheduler().runTaskLater(plugin, () -> {
+					openGlobalPermissionGui(player, chestBlock, chestOwners);
+					switchingGuiPlayers.remove(player.getUniqueId());
+				}, 2L);
+			} else {
+				int newPage = currentPage - 1;
+				playerGuiPages.put(player.getUniqueId(), newPage);
+				openGlobalRemoveGui(player, chestBlock, chestOwners, globalPermissions, newPage);
+			}
 			return false;
 		}
 		
@@ -589,7 +595,7 @@ public class ShanGui {
 	}
 	
 	// 移除权限
-	public static boolean handlePermissionRemoveClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<String, Set<UUID>> chestPermissions, Map<UUID, Integer> playerGuiPages, int currentPage) {
+	public static boolean handlePermissionRemoveClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<String, Set<UUID>> chestPermissions, Map<UUID, Integer> playerGuiPages, Set<UUID> switchingGuiPlayers, int currentPage) {
 		String locationKey = getLocationKey(chestBlock);
 		Set<UUID> allowedPlayers = chestPermissions.get(locationKey);
 		
@@ -604,11 +610,21 @@ public class ShanGui {
 			return false;
 		}
 		
-		// 上一页
+		// 上一页/返回 (第1页时返回上一级, 其他页时返回上一页)
 		if (slot == PREV_PAGE_SLOT) {
-			int newPage = Math.max(0, currentPage - 1);
-			playerGuiPages.put(player.getUniqueId(), newPage);
-			openPermissionRemoveGui(player, chestBlock, chestOwners, chestPermissions, newPage);
+			if (currentPage == 0) {
+				// 返回上一级GUI
+				playerGuiPages.remove(player.getUniqueId());
+				switchingGuiPlayers.add(player.getUniqueId());
+				Bukkit.getScheduler().runTaskLater(plugin, () -> {
+					openSinglePermissionGui(player, chestBlock, chestOwners);
+					switchingGuiPlayers.remove(player.getUniqueId());
+				}, 2L);
+			} else {
+				int newPage = currentPage - 1;
+				playerGuiPages.put(player.getUniqueId(), newPage);
+				openPermissionRemoveGui(player, chestBlock, chestOwners, chestPermissions, newPage);
+			}
 			return false;
 		}
 		
