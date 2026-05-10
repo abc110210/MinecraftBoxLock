@@ -279,7 +279,7 @@ public class Shan extends JavaPlugin implements Listener {
 		}
 		else if (ShanGui.isGlobalAddGui(title)) {
 			event.setCancelled(true);
-			boolean closed = ShanGui.handleGlobalAddClick(player, slot, chestBlock, chestOwners, globalPermissions);
+			boolean closed = ShanGui.handleGlobalAddClick(player, slot, chestBlock, chestOwners, globalPermissions, chestPermissions);
 			if (closed) {
 				saveChestData();
 			}

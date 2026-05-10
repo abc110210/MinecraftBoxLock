@@ -346,7 +346,7 @@ public class ShanGui {
 	}
 	
 	// 添加全局权限
-	public static boolean handleGlobalAddClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Set<UUID>> globalPermissions) {
+	public static boolean handleGlobalAddClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Set<UUID>> globalPermissions, Map<String, Set<UUID>> chestPermissions) {
 		UUID ownerUUID = chestOwners.get(getLocationKey(chestBlock));
 		if (ownerUUID == null) {
 			return false;
