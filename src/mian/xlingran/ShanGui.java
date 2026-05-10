@@ -338,10 +338,14 @@ public class ShanGui {
 	private static List<Integer> getInnerSlotsPaginated(int rows) {
 		List<Integer> slots = new ArrayList<>();
 		int cols = 9;
-		// 只取第2-5行的内部格子 (4行 × 7列 = 28格)
+		// 只取第2-5行的内部格子，但排除导航按钮所在的格子 (4行 × 7列 = 28格，再减去导航格子)
 		for (int row = 1; row < rows - 1; row++) {
 			for (int col = 1; col < cols - 1; col++) {
-				slots.add(row * cols + col);
+				int slot = row * cols + col;
+				// 排除导航按钮格子
+				if (slot != PREV_PAGE_SLOT && slot != NEXT_PAGE_SLOT && slot != RETURN_SLOT) {
+					slots.add(slot);
+				}
 			}
 		}
 		return slots;

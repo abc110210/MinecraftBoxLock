@@ -225,10 +225,20 @@ public class ShanMeta {
 				// 加载后清理过期缓存
 				cleanExpiredCache();
 			}
-		} catch (IOException | ClassNotFoundException e) {
+		} catch (ClassNotFoundException e) {
+			// 类结构变更（从内部类移到外部类），旧缓存不兼容，自动重建
+			plugin.getLogger().info("检测到旧版本缓存格式，正在重建缓存...");
+			headCache.clear();
+			if (cacheFile.exists()) {
+				cacheFile.delete();
+			}
+		} catch (IOException e) {
 			plugin.getLogger().log(Level.WARNING, "无法加载头颅缓存，将重建缓存", e);
 			// 如果加载失败，清空缓存
 			headCache.clear();
+			if (cacheFile.exists()) {
+				cacheFile.delete();
+			}
 		}
 	}
 	

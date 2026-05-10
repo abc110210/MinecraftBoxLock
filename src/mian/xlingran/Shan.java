@@ -56,6 +56,9 @@ public class Shan extends JavaPlugin implements Listener {
 		// 加载数据
 		loadChestData();
 		
+		// 设置控制台编码为 UTF-8，避免 Windows 乱码
+		setupConsoleEncoding();
+		
 		Bukkit.getConsoleSender().sendMessage("§a欢迎使用 §b箱子锁 §a插件,交流群: 943446220");
 	}
 	
@@ -63,7 +66,31 @@ public class Shan extends JavaPlugin implements Listener {
 	public void onDisable() {
 		// 保存
 		saveChestData();
-		Bukkit.getConsoleSender().sendMessage("§a箱子锁插件已关闭，交流群: 943446220");
+		Bukkit.getConsoleSender().sendMessage("§c箱子锁插件已关闭，交流群: 943446220");
+	}
+	
+	/**
+	 * 设置控制台编码，解决 Windows 乱码问题
+	 */
+	private void setupConsoleEncoding() {
+		try {
+			// 检测是否为 Windows 系统
+			String os = System.getProperty("os.name").toLowerCase();
+			if (os.contains("win")) {
+				// Windows 系统设置 UTF-8 编码
+				System.setProperty("file.encoding", "UTF-8");
+				System.setProperty("sun.jnu.encoding", "UTF-8");
+				
+				// 设置控制台代码页为 UTF-8 (65001)
+				try {
+					Runtime.getRuntime().exec("cmd /c chcp 65001");
+				} catch (Exception e) {
+					// 忽略执行失败
+				}
+			}
+		} catch (Exception e) {
+			// 忽略编码设置失败
+		}
 	}
 	
 	//监听防止事件
