@@ -2,6 +2,7 @@ package mian.xlingran;
 
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
+import org.bukkit.OfflinePlayer;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -11,9 +12,14 @@ import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
+import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryMoveItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.Inventory;
+import org.bukkit.inventory.ItemFlag;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.meta.ItemMeta;
+import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.*;
@@ -32,6 +38,8 @@ public class Shan extends JavaPlugin implements Listener {
 	
 	// 临时存储正在打开 GUI 的玩家，防止触发破坏事件
 	private Set<UUID> guiOpeningPlayers = new HashSet<>();
+	// 临时存储玩家打开的箱子位置，用于关闭 GUI 时更新状态
+	private Map<UUID, String> playerOpenedChests = new HashMap<>();
 	
 	// GUI 界面标题
 	private static final String GUI_TITLE = "§e箱子管理";
@@ -81,8 +89,6 @@ public class Shan extends JavaPlugin implements Listener {
 	 * 监听玩家右键点击事件
 	 * - 非所有者：阻止打开箱子
 	 * - 所有者：正常打开箱子
-	 * 
-	 * Action.RIGHT_CLICK_BLOCK 始终检测右键操作，不受玩家按键绑定影响
 	 */
 	@EventHandler(priority = EventPriority.HIGHEST)
 	public void onPlayerInteractRight(PlayerInteractEvent event) {
@@ -114,8 +120,6 @@ public class Shan extends JavaPlugin implements Listener {
 	/**
 	 * 监听玩家左键点击事件
 	 * 所有者 Shift+左键 打开 GUI 管理界面
-	 * 
-	 * player.isSneaking() 检测潜行状态，会随玩家潜行键设置（默认 Shift）改变而改变
 	 */
 	@EventHandler(priority = EventPriority.HIGHEST)
 	public void onPlayerInteractLeft(PlayerInteractEvent event) {
@@ -140,13 +144,12 @@ public class Shan extends JavaPlugin implements Listener {
 		// 所有者 Shift+左键 打开 GUI
 		if (ownerUUID.equals(player.getUniqueId()) && player.isSneaking()) {
 			event.setCancelled(true);
-			openGui(player);
+			openGui(player, block);
 		}
 	}
 	
 	/**
 	 * 监听方块破坏事件，阻止非所有者破坏箱子
-	 * 同时防止所有者在创造模式下通过 Shift+左键 破坏箱子
 	 */
 	@EventHandler(priority = EventPriority.HIGHEST)
 	public void onBlockBreak(BlockBreakEvent event) {
@@ -246,14 +249,63 @@ public class Shan extends JavaPlugin implements Listener {
 		
 		// 阻止在箱子管理 GUI 中操作物品
 		event.setCancelled(true);
+		
+		// 处理按钮点击逻辑
+		Player player = (Player) event.getWhoClicked();
+		int slot = event.getRawSlot();
+		String chestLocation = playerOpenedChests.get(player.getUniqueId());
+		
+		if (chestLocation == null) {
+			return;
+		}
+		
+		switch (slot) {
+			case 10: // 单独权限
+				player.sendMessage("§a§l§n单独权限");
+				// 后续可扩展单独权限功能
+				break;
+			case 12: // 批量权限
+				player.sendMessage("§e§l§n批量权限");
+				// 后续可扩展批量权限功能
+				break;
+			case 14: // 锁定开关
+				player.sendMessage("§c§l§n锁定开关");
+				// 后续可扩展锁定开关功能
+				break;
+			case 16: // 漏斗开关
+				player.sendMessage("§b§l§n漏斗开关");
+				// 后续可扩展漏斗开关功能
+				break;
+		}
+	}
+	
+	/**
+	 * 监听 GUI 关闭事件
+	 */
+	@EventHandler
+	public void onInventoryClose(InventoryCloseEvent event) {
+		if (event.getView() == null) {
+			return;
+		}
+		
+		String title = event.getView().getTitle();
+		if (!title.equals(GUI_TITLE)) {
+			return;
+		}
+		
+		Player player = (Player) event.getPlayer();
+		playerOpenedChests.remove(player.getUniqueId());
 	}
 	
 	/**
 	 * 打开箱子管理 GUI
 	 */
-	private void openGui(Player player) {
+	private void openGui(Player player, Block chestBlock) {
 		// 标记玩家正在打开 GUI，防止触发破坏事件
 		guiOpeningPlayers.add(player.getUniqueId());
+		
+		// 记录玩家打开的箱子位置
+		playerOpenedChests.put(player.getUniqueId(), getLocationKey(chestBlock));
 		
 		// 延迟一 tick 后移除标记，确保 GUI 已打开
 		Bukkit.getScheduler().runTaskLater(this, () -> {
@@ -261,7 +313,77 @@ public class Shan extends JavaPlugin implements Listener {
 		}, 1L);
 		
 		Inventory gui = Bukkit.createInventory(null, GUI_ROWS * 9, GUI_TITLE);
+		
+		// 黑色玻璃板填充
+		ItemStack blackGlass = createItem(Material.BLACK_STAINED_GLASS_PANE, " ", null);
+		for (int i = 0; i < 27; i++) {
+			gui.setItem(i, blackGlass);
+		}
+		
+		// 第10格：箱子所有者的头颅
+		ItemStack ownerHead = createPlayerHead(chestBlock);
+		gui.setItem(10, ownerHead);
+		
+		// 第12格：末影箱
+		ItemStack enderChest = createItem(Material.ENDER_CHEST, "§e批量权限", null);
+		gui.setItem(12, enderChest);
+		
+		// 第14格：箱子
+		ItemStack chest = createItem(Material.CHEST, "§c锁定开关", null);
+		gui.setItem(14, chest);
+		
+		// 第16格：漏斗
+		ItemStack hopper = createItem(Material.HOPPER, "§b漏斗开关", null);
+		gui.setItem(16, hopper);
+		
 		player.openInventory(gui);
+	}
+	
+	/**
+	 * 创建物品
+	 */
+	private ItemStack createItem(Material material, String name, String... lore) {
+		ItemStack item = new ItemStack(material);
+		ItemMeta meta = item.getItemMeta();
+		if (meta != null) {
+			if (name != null) {
+				meta.setDisplayName(name);
+			}
+			if (lore != null && lore.length > 0) {
+				java.util.List<String> loreList = new java.util.ArrayList<>();
+				for (String line : lore) {
+					loreList.add(line);
+				}
+				meta.setLore(loreList);
+			}
+			meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+			item.setItemMeta(meta);
+		}
+		return item;
+	}
+	
+	/**
+	 * 创建玩家头颅
+	 */
+	private ItemStack createPlayerHead(Block chestBlock) {
+		String locationKey = getLocationKey(chestBlock);
+		UUID ownerUUID = chestOwners.get(locationKey);
+		
+		ItemStack head = new ItemStack(Material.PLAYER_HEAD);
+		SkullMeta meta = (SkullMeta) head.getItemMeta();
+		
+		if (meta != null) {
+			meta.setDisplayName("§a单独权限");
+			
+			if (ownerUUID != null) {
+				OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(ownerUUID);
+				meta.setOwningPlayer(offlinePlayer);
+			}
+			
+			head.setItemMeta(meta);
+		}
+		
+		return head;
 	}
 	
 	/**
