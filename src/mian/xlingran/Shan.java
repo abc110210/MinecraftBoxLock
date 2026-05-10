@@ -14,12 +14,13 @@ import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryMoveItemEvent;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.inventory.Inventory;
-import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.*;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.logging.Level;
 
@@ -28,6 +29,9 @@ public class Shan extends JavaPlugin implements Listener {
 	// 存储箱子位置与所有者的映射关系
 	private Map<String, UUID> chestOwners = new HashMap<>();
 	private File dataFile;
+	
+	// 临时存储正在打开 GUI 的玩家，防止触发破坏事件
+	private Set<UUID> guiOpeningPlayers = new HashSet<>();
 	
 	// GUI 界面标题
 	private static final String GUI_TITLE = "§e箱子管理";
@@ -77,6 +81,9 @@ public class Shan extends JavaPlugin implements Listener {
 	 * 监听玩家右键点击事件
 	 * - 非所有者：阻止打开箱子
 	 * - 所有者 Shift+右键：打开 GUI 管理界面
+	 * 
+	 * Action.RIGHT_CLICK_BLOCK 始终检测右键操作，不受玩家按键绑定影响
+	 * player.isSneaking() 检测潜行状态，会随玩家潜行键设置（默认 Shift）改变而改变
 	 */
 	@EventHandler(priority = EventPriority.HIGHEST)
 	public void onPlayerInteract(PlayerInteractEvent event) {
@@ -114,11 +121,18 @@ public class Shan extends JavaPlugin implements Listener {
 	
 	/**
 	 * 监听方块破坏事件，阻止非所有者破坏箱子
+	 * 同时防止所有者在创造模式下通过 Shift+右键 破坏箱子
 	 */
 	@EventHandler(priority = EventPriority.HIGHEST)
 	public void onBlockBreak(BlockBreakEvent event) {
 		Block block = event.getBlock();
 		Player player = event.getPlayer();
+		
+		// 如果玩家正在打开 GUI，阻止破坏
+		if (guiOpeningPlayers.contains(player.getUniqueId())) {
+			event.setCancelled(true);
+			return;
+		}
 		
 		// 检查破坏的是否是箱子
 		if (!isChest(block.getType())) {
@@ -212,6 +226,14 @@ public class Shan extends JavaPlugin implements Listener {
 	 * 打开箱子管理 GUI
 	 */
 	private void openGui(Player player) {
+		// 标记玩家正在打开 GUI，防止触发破坏事件
+		guiOpeningPlayers.add(player.getUniqueId());
+		
+		// 延迟一 tick 后移除标记，确保 GUI 已打开
+		Bukkit.getScheduler().runTaskLater(this, () -> {
+			guiOpeningPlayers.remove(player.getUniqueId());
+		}, 1L);
+		
 		Inventory gui = Bukkit.createInventory(null, GUI_ROWS * 9, GUI_TITLE);
 		player.openInventory(gui);
 	}
