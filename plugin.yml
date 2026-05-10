@@ -1,4 +1,10 @@
 name: MinecraftboxLock
 main: mian.xlingran.Shan
-version: 1.6
+version: 1.2
 api-version: 1.21
+
+commands:
+  xlr:
+    description: 将您所有的箱子权限授予指定玩家
+    usage: /xlr <玩家名称>
+    aliases: [xlr]
