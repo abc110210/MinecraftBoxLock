@@ -21,10 +21,10 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>1.8</maven.compiler.source>
-        <maven.compiler.target>1.8</maven.compiler.target>
+        <maven.compiler.source>21</maven.compiler.source>
+        <maven.compiler.target>21</maven.compiler.target>
         <!-- 编译基线：与最低支持版本一致；运行时可上至 Paper 26.x（PlatformBridge + Material.matchMaterial GUI 材质） -->
-        <spigot.api.version>1.12.2-R0.1-SNAPSHOT</spigot.api.version>
+        <spigot.api.version>spigot-api-1.21.1-R0.1-SNAPSHOT</spigot.api.version>
     </properties>
 
     <repositories>
