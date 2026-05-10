@@ -18,7 +18,6 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandSender;
-import org.bukkit.OfflinePlayer;
 
 import java.io.*;
 import java.util.*;
@@ -29,6 +28,8 @@ public class Shan extends JavaPlugin implements Listener {
 	// 存储箱子位置与所有者的映射关系
 	private Map<String, UUID> chestOwners = new HashMap<>();
 	private Map<String, Set<UUID>> chestPermissions = new HashMap<>();
+	// 存储全局授权关系: owner UUID -> set of authorized player UUIDs
+	private Map<UUID, Set<UUID>> globalPermissions = new HashMap<>();
 	private File dataFile;
 	
 	private Set<UUID> guiOpeningPlayers = new HashSet<>();
@@ -41,6 +42,7 @@ public class Shan extends JavaPlugin implements Listener {
 		
 		// 注册指令
 		this.getCommand("xlr").setExecutor(this);
+		this.getCommand("xlrdel").setExecutor(this);
 		
 		// 初始化
 		dataFile = new File(getDataFolder(), "chests.yml");
@@ -69,7 +71,16 @@ public class Shan extends JavaPlugin implements Listener {
 		
 		if (isChest(block.getType())) {
 			String locationKey = getLocationKey(block);
-			chestOwners.put(locationKey, player.getUniqueId());
+			UUID ownerUUID = player.getUniqueId();
+			chestOwners.put(locationKey, ownerUUID);
+			
+			// 自动应用全局授权 - 将所有者已授权的所有玩家添加到此新箱子
+			Set<UUID> globallyAuthorized = globalPermissions.get(ownerUUID);
+			if (globallyAuthorized != null && !globallyAuthorized.isEmpty()) {
+				Set<UUID> chestPerms = chestPermissions.computeIfAbsent(locationKey, k -> new HashSet<>());
+				chestPerms.addAll(globallyAuthorized);
+			}
+			
 			saveChestData();
 		}
 	}
@@ -220,7 +231,7 @@ public class Shan extends JavaPlugin implements Listener {
 		
 		if (ShanGui.isBoxManageGui(title)) {
 			event.setCancelled(true);
-			if (slot == 10 || slot == 12) {
+			if (slot == 10) {
 				switchingGuiPlayers.add(player.getUniqueId());
 				final String loc = chestLocation;
 				final int s = slot;
@@ -288,49 +299,6 @@ public class Shan extends JavaPlugin implements Listener {
 				}
 			}
 		}
-		else if (ShanGui.isBatchPermissionGui(title)) {
-			event.setCancelled(true);
-			if (slot == 10 || slot == 14 || slot == 26) {
-				switchingGuiPlayers.add(player.getUniqueId());
-				final String loc = chestLocation;
-				final int s = slot;
-				Bukkit.getScheduler().runTaskLater(this, () -> {
-					Block cb = parseBlockLocation(player, loc);
-					if (cb != null) {
-						ShanGui.handleBatchPermissionClick(player, s, cb, chestOwners, chestPermissions);
-					}
-					switchingGuiPlayers.remove(player.getUniqueId());
-				}, 2L);
-			}
-		}
-		else if (ShanGui.isBatchAddGui(title)) {
-			event.setCancelled(true);
-			if (slot == 53) {
-				switchingGuiPlayers.add(player.getUniqueId());
-				final String loc = chestLocation;
-				Bukkit.getScheduler().runTaskLater(this, () -> {
-					Block cb = parseBlockLocation(player, loc);
-					if (cb != null) {
-						ShanGui.openBatchPermissionGui(player, cb, chestOwners);
-					}
-					switchingGuiPlayers.remove(player.getUniqueId());
-				}, 2L);
-			}
-		}
-		else if (ShanGui.isBatchRemoveGui(title)) {
-			event.setCancelled(true);
-			if (slot == 53) {
-				switchingGuiPlayers.add(player.getUniqueId());
-				final String loc = chestLocation;
-				Bukkit.getScheduler().runTaskLater(this, () -> {
-					Block cb = parseBlockLocation(player, loc);
-					if (cb != null) {
-						ShanGui.openBatchPermissionGui(player, cb, chestOwners);
-					}
-					switchingGuiPlayers.remove(player.getUniqueId());
-				}, 2L);
-			}
-		}
 	}
 
 	// 关闭事件
@@ -344,10 +312,7 @@ public class Shan extends JavaPlugin implements Listener {
 		if (!ShanGui.isBoxManageGui(title) && 
 			!ShanGui.isSinglePermissionGui(title) && 
 			!ShanGui.isPermissionAddGui(title) && 
-			!ShanGui.isPermissionRemoveGui(title) &&
-			!ShanGui.isBatchPermissionGui(title) &&
-			!ShanGui.isBatchAddGui(title) &&
-			!ShanGui.isBatchRemoveGui(title)) {
+			!ShanGui.isPermissionRemoveGui(title)) {
 			return;
 		}
 		
@@ -429,6 +394,14 @@ public class Shan extends JavaPlugin implements Listener {
 					writer.newLine();
 				}
 			}
+			// 保存全局授权数据
+			for (Map.Entry<UUID, Set<UUID>> entry : globalPermissions.entrySet()) {
+				UUID ownerUUID = entry.getKey();
+				for (UUID authorizedUUID : entry.getValue()) {
+					writer.write("global:" + ownerUUID.toString() + "=" + authorizedUUID.toString());
+					writer.newLine();
+				}
+			}
 		} catch (IOException e) {
 			getLogger().log(Level.SEVERE, "无法保存箱子数据", e);
 		}
@@ -457,17 +430,23 @@ public class Shan extends JavaPlugin implements Listener {
 							String locationKey = key.substring(5);
 							UUID playerUUID = UUID.fromString(value);
 							chestPermissions.computeIfAbsent(locationKey, k -> new HashSet<>()).add(playerUUID);
+						} else if (key.startsWith("global:")) {
+							// 加载全局授权数据
+							String ownerUUIDStr = key.substring(7);
+							UUID ownerUUID = UUID.fromString(ownerUUIDStr);
+							UUID authorizedUUID = UUID.fromString(value);
+							globalPermissions.computeIfAbsent(ownerUUID, k -> new HashSet<>()).add(authorizedUUID);
 						}
 					}
 				}
 			}
-			getLogger().info("已加载 " + chestOwners.size() + " 个箱子的数据");
+			getLogger().info("已加载 " + chestOwners.size() + " 个箱子的数据，" + globalPermissions.size() + " 个全局授权关系");
 		} catch (IOException e) {
 			getLogger().log(Level.SEVERE, "无法加载箱子数据", e);
 		}
 	}
 	
-	// 处理 /xlr 指令
+	// 处理 /xlr 和 /xlrdel 指令
 	@Override
 	public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
 		if (!(sender instanceof Player)) {
@@ -478,8 +457,13 @@ public class Shan extends JavaPlugin implements Listener {
 		Player player = (Player) sender;
 		
 		if (args.length != 1) {
-			player.sendMessage("§c用法: /xlr <玩家名称>");
-			player.sendMessage("§c将您所有的箱子权限授予指定玩家");
+			if (label.equalsIgnoreCase("xlr")) {
+				player.sendMessage("§c用法: /xlr <玩家名称>");
+				player.sendMessage("§c将您所有的箱子权限授予指定玩家（包括新箱子）");
+			} else if (label.equalsIgnoreCase("xlrdel")) {
+				player.sendMessage("§c用法: /xlrdel <玩家名称>");
+				player.sendMessage("§c取消指定玩家对您所有箱子的权限");
+			}
 			return true;
 		}
 		
@@ -493,30 +477,64 @@ public class Shan extends JavaPlugin implements Listener {
 		
 		UUID targetUUID = targetPlayer.getUniqueId();
 		if (targetUUID.equals(player.getUniqueId())) {
-			player.sendMessage("§c不能给自己授权！");
+			player.sendMessage("§c不能对自己操作！");
 			return true;
 		}
 		
-		// 统计授权的箱子数量
-		int authorizedCount = 0;
-		for (Map.Entry<String, UUID> entry : chestOwners.entrySet()) {
-			if (entry.getValue().equals(player.getUniqueId())) {
-				String locationKey = entry.getKey();
-				Set<UUID> allowedPlayers = chestPermissions.computeIfAbsent(locationKey, k -> new HashSet<>());
-				if (allowedPlayers.add(targetUUID)) {
-					authorizedCount++;
+		if (label.equalsIgnoreCase("xlr")) {
+			// 添加全局授权
+			Set<UUID> authorizedPlayers = globalPermissions.computeIfAbsent(player.getUniqueId(), k -> new HashSet<>());
+			
+			if (authorizedPlayers.contains(targetUUID)) {
+				player.sendMessage("§c玩家 §6" + targetPlayer.getName() + " §c已经被授权了！");
+				return true;
+			}
+			
+			authorizedPlayers.add(targetUUID);
+			
+			// 同时给当前所有箱子添加权限
+			for (Map.Entry<String, UUID> entry : chestOwners.entrySet()) {
+				if (entry.getValue().equals(player.getUniqueId())) {
+					String locationKey = entry.getKey();
+					Set<UUID> chestPerms = chestPermissions.computeIfAbsent(locationKey, k -> new HashSet<>());
+					chestPerms.add(targetUUID);
 				}
 			}
-		}
-		
-		saveChestData();
-		
-		player.sendMessage("§a已成功将 §6" + authorizedCount + " §a个箱子的权限授予玩家 §6" + targetPlayer.getName());
-		
-		// 如果目标玩家在线，通知他
-		Player onlineTarget = Bukkit.getPlayer(targetUUID);
-		if (onlineTarget != null && onlineTarget.isOnline()) {
-			onlineTarget.sendMessage("§a玩家 §6" + player.getName() + " §a已将他的所有箱子权限授予给您！");
+			
+			saveChestData();
+			player.sendMessage("§a已成功将您所有箱子的权限授予玩家 §6" + targetPlayer.getName());
+			
+		} else if (label.equalsIgnoreCase("xlrdel")) {
+			// 删除全局授权
+			Set<UUID> authorizedPlayers = globalPermissions.get(player.getUniqueId());
+			
+			if (authorizedPlayers == null || !authorizedPlayers.contains(targetUUID)) {
+				player.sendMessage("§c玩家 §6" + targetPlayer.getName() + " §c没有被全局授权！");
+				return true;
+			}
+			
+			authorizedPlayers.remove(targetUUID);
+			if (authorizedPlayers.isEmpty()) {
+				globalPermissions.remove(player.getUniqueId());
+			}
+			
+			// 从所有箱子中移除权限
+			for (Map.Entry<String, Set<UUID>> entry : chestPermissions.entrySet()) {
+				String locationKey = entry.getKey();
+				UUID ownerUUID = chestOwners.get(locationKey);
+				
+				// 只处理属于当前玩家的箱子
+				if (ownerUUID != null && ownerUUID.equals(player.getUniqueId())) {
+					Set<UUID> chestPerms = entry.getValue();
+					chestPerms.remove(targetUUID);
+					if (chestPerms.isEmpty()) {
+						chestPermissions.remove(locationKey);
+					}
+				}
+			}
+			
+			saveChestData();
+			player.sendMessage("§a已取消玩家 §6" + targetPlayer.getName() + " §a对您所有箱子的权限");
 		}
 		
 		return true;

@@ -20,15 +20,11 @@ public class ShanGui {
 	private static final String SINGLE_PERMISSION_TITLE = "§a单独权限设置";
 	private static final String PERMISSION_ADD_TITLE = "§a权限设置(单独)";
 	private static final String PERMISSION_REMOVE_TITLE = "§c取消权限(单独)";
-	private static final String BATCH_PERMISSION_TITLE = "§e批量权限设置";
-	private static final String BATCH_ADD_TITLE = "§a权限设置(批量)";
-	private static final String BATCH_REMOVE_TITLE = "§c权限删除(批量)";
 	// GUI行数
 	private static final int GUI_ROWS = 4;      // 箱子管理 4行
 	private static final int SINGLE_ROWS = 3;   // 单独权限设置 3行
 	private static final int PERMISSION_ADD_ROWS = 6;    // 54格 (最大)
 	private static final int PERMISSION_REMOVE_ROWS = 6; // 54格 (最大)
-	private static final int BATCH_ROWS = 3;    // 批量权限设置 3行
 	
 	// 打开箱子管理GUI界面 (4行)
 	public static void openBoxManageGui(Player player, Block chestBlock, Map<String, UUID> chestOwners) {
@@ -41,9 +37,6 @@ public class ShanGui {
 		
 		ItemStack ownerHead = createPlayerHead(chestBlock, chestOwners);
 		gui.setItem(10, ownerHead);
-		
-		ItemStack enderChest = createItem(Material.ENDER_CHEST, "§e批量权限");
-		gui.setItem(12, enderChest);
 		
 		ItemStack chest = createItem(Material.CHEST, "§9锁定开关");
 		gui.setItem(14, chest);
@@ -71,55 +64,6 @@ public class ShanGui {
 		
 		ItemStack returnButton = createItem(Material.WHITE_STAINED_GLASS_PANE, "§8返回");
 		gui.setItem(26, returnButton);
-		
-		player.openInventory(gui);
-	}
-	
-	// 打开批量权限设置GUI (3行)
-	public static void openBatchPermissionGui(Player player, Block chestBlock, Map<String, UUID> chestOwners) {
-		Inventory gui = Bukkit.createInventory(null, BATCH_ROWS * 9, BATCH_PERMISSION_TITLE);
-		
-		ItemStack blackGlass = createItem(Material.BLACK_STAINED_GLASS_PANE, " ");
-		for (int i = 0; i < 27; i++) {
-			gui.setItem(i, blackGlass);
-		}
-		
-		// 第11格：小麦 - 批量设置箱子权限
-		ItemStack wheat = createItem(Material.WHEAT, "§a批量设置箱子权限");
-		gui.setItem(10, wheat);
-		
-		// 第15格：骨头 - 批量删除箱子权限
-		ItemStack bone = createItem(Material.BONE, "§c批量删除箱子权限");
-		gui.setItem(14, bone);
-		
-		ItemStack returnButton = createItem(Material.WHITE_STAINED_GLASS_PANE, "§8返回");
-		gui.setItem(26, returnButton);
-		
-		player.openInventory(gui);
-	}
-	
-	// 打开权限设置(批量) GUI (6行)
-	public static void openBatchAddGui(Player player, Block chestBlock, Map<String, UUID> chestOwners) {
-		Inventory gui = Bukkit.createInventory(null, PERMISSION_ADD_ROWS * 9, BATCH_ADD_TITLE);
-		
-		ItemStack blackGlass = createItem(Material.BLACK_STAINED_GLASS_PANE, " ");
-		fillBorder(gui, PERMISSION_ADD_ROWS, blackGlass);
-		
-		ItemStack returnButton = createItem(Material.WHITE_STAINED_GLASS_PANE, "§8返回");
-		gui.setItem(53, returnButton);
-		
-		player.openInventory(gui);
-	}
-	
-	// 打开权限删除(批量) GUI (6行)
-	public static void openBatchRemoveGui(Player player, Block chestBlock, Map<String, UUID> chestOwners) {
-		Inventory gui = Bukkit.createInventory(null, PERMISSION_REMOVE_ROWS * 9, BATCH_REMOVE_TITLE);
-		
-		ItemStack blackGlass = createItem(Material.BLACK_STAINED_GLASS_PANE, " ");
-		fillBorder(gui, PERMISSION_REMOVE_ROWS, blackGlass);
-		
-		ItemStack returnButton = createItem(Material.WHITE_STAINED_GLASS_PANE, "§8返回");
-		gui.setItem(53, returnButton);
 		
 		player.openInventory(gui);
 	}
@@ -245,26 +189,11 @@ public class ShanGui {
 		return PERMISSION_REMOVE_TITLE.equals(title);
 	}
 	
-	public static boolean isBatchPermissionGui(String title) {
-		return BATCH_PERMISSION_TITLE.equals(title);
-	}
-	
-	public static boolean isBatchAddGui(String title) {
-		return BATCH_ADD_TITLE.equals(title);
-	}
-	
-	public static boolean isBatchRemoveGui(String title) {
-		return BATCH_REMOVE_TITLE.equals(title);
-	}
-	
 	// 箱子管理GUI点击
 	public static void handleBoxManageClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<String, Set<UUID>> chestPermissions) {
 		switch (slot) {
 			case 10: 
 				openSinglePermissionGui(player, chestBlock, chestOwners);
-				break;
-			case 12: 
-				openBatchPermissionGui(player, chestBlock, chestOwners);
 				break;
 			case 14: 
 				player.sendMessage("§c§l§n锁定开关");
@@ -283,21 +212,6 @@ public class ShanGui {
 				break;
 			case 15: 
 				openPermissionRemoveGui(player, chestBlock, chestOwners, chestPermissions);
-				break;
-			case 26: 
-				openBoxManageGui(player, chestBlock, chestOwners);
-				break;
-		}
-	}
-	
-	// 批量权限设置GUI点击
-	public static void handleBatchPermissionClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<String, Set<UUID>> chestPermissions) {
-		switch (slot) {
-			case 10: 
-				openBatchAddGui(player, chestBlock, chestOwners);
-				break;
-			case 14: 
-				openBatchRemoveGui(player, chestBlock, chestOwners);
 				break;
 			case 26: 
 				openBoxManageGui(player, chestBlock, chestOwners);
