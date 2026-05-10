@@ -4,35 +4,53 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <groupId>com.xlingran</groupId>
-    <artifactId>XlingranAuth</artifactId>
-    <version>0.0.1</version>
+    <groupId>mian.xlingran</groupId>
+    <artifactId>MinecraftboxLock</artifactId>
+    <version>1.0</version>
     <packaging>jar</packaging>
 
-    <name>XlingranAuth</name>
-    <description>Authentication plugin to protect creator identity - Author: shan</description>
-    <url>https://github.com/Lexcubia/MinecraftBoxLock</url>
-
-    <scm>
-        <connection>scm:git:https://github.com/Lexcubia/MinecraftBoxLock.git</connection>
-        <developerConnection>scm:git:git@github.com:Lexcubia/MinecraftBoxLock.git</developerConnection>
-        <url>https://github.com/Lexcubia/MinecraftBoxLock</url>
-    </scm>
+    <name>MinecraftboxLock</name>
+    <description>Minecraft 箱子锁插件</description>
 
     <properties>
+        <java.version>21</java.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
-        <!-- 编译基线：与最低支持版本一致；运行时可上至 Paper 26.x（PlatformBridge + Material.matchMaterial GUI 材质） -->
-        <spigot.api.version>1.21.1-R0.1-SNAPSHOT</spigot.api.version>
     </properties>
+
+    <build>
+        <defaultGoal>clean package</defaultGoal>
+        <sourceDirectory>${basedir}/src</sourceDirectory>
+        <finalName>${project.name}-${project.version}</finalName>
+        <resources>
+            <resource>
+                <directory>${basedir}</directory>
+                <includes>
+                    <include>plugin.yml</include>
+                </includes>
+            </resource>
+        </resources>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.11.0</version>
+                <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-jar-plugin</artifactId>
+                <version>3.3.0</version>
+            </plugin>
+        </plugins>
+    </build>
 
     <repositories>
         <repository>
-            <id>spigotmc-snapshots</id>
+            <id>spigot-repo</id>
             <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
-            <releases><enabled>false</enabled></releases>
-            <snapshots><enabled>true</enabled></snapshots>
         </repository>
     </repositories>
 
@@ -40,30 +58,8 @@
         <dependency>
             <groupId>org.spigotmc</groupId>
             <artifactId>spigot-api</artifactId>
-            <version>${spigot.api.version}</version>
+            <version>1.21.1-R0.1-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
     </dependencies>
-
-    <build>
-        <defaultGoal>clean package</defaultGoal>
-        <sourceDirectory>${basedir}/src/main/java</sourceDirectory>
-        <resources>
-            <resource>
-                <directory>${basedir}/src/main/resources</directory>
-                <filtering>true</filtering>
-            </resource>
-        </resources>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.13.0</version>
-                <configuration>
-                    <source>1.8</source>
-                    <target>1.8</target>
-                </configuration>
-            </plugin>
-        </plugins>
-    </build>
 </project>
