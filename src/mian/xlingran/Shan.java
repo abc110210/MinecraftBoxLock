@@ -18,17 +18,15 @@ import org.bukkit.inventory.Inventory;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.*;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
+import java.util.*;
 import java.util.logging.Level;
 
 public class Shan extends JavaPlugin implements Listener {
 	
 	// 存储箱子位置与所有者的映射关系
 	private Map<String, UUID> chestOwners = new HashMap<>();
+	// 存储箱子位置与有权限玩家的映射关系
+	private Map<String, Set<UUID>> chestPermissions = new HashMap<>();
 	private File dataFile;
 	
 	// 临时存储正在打开 GUI 的玩家，防止触发破坏事件
@@ -77,8 +75,8 @@ public class Shan extends JavaPlugin implements Listener {
 	
 	/**
 	 * 监听玩家右键点击事件
-	 * - 非所有者：阻止打开箱子
-	 * - 所有者：正常打开箱子
+	 * - 非所有者且无权限：阻止打开箱子
+	 * - 所有者或有权限：正常打开箱子
 	 */
 	@EventHandler(priority = EventPriority.HIGHEST)
 	public void onPlayerInteractRight(PlayerInteractEvent event) {
@@ -100,10 +98,13 @@ public class Shan extends JavaPlugin implements Listener {
 			return;
 		}
 		
-		// 非所有者阻止打开
+		// 检查是否有权限（所有者或有权限的玩家）
 		if (!ownerUUID.equals(player.getUniqueId())) {
-			event.setCancelled(true);
-			player.sendMessage("§c这个箱子已被锁定，您无法打开！");
+			Set<UUID> allowedPlayers = chestPermissions.get(locationKey);
+			if (allowedPlayers == null || !allowedPlayers.contains(player.getUniqueId())) {
+				event.setCancelled(true);
+				player.sendMessage("§c这个箱子已被锁定，您无法打开！");
+			}
 		}
 	}
 	
@@ -167,6 +168,7 @@ public class Shan extends JavaPlugin implements Listener {
 		} else if (ownerUUID != null) {
 			// 如果是所有者破坏箱子，清除数据
 			chestOwners.remove(locationKey);
+			chestPermissions.remove(locationKey);
 			saveChestData();
 		}
 	}
@@ -254,7 +256,23 @@ public class Shan extends JavaPlugin implements Listener {
 		// 单独权限设置 GUI
 		else if (ShanGui.isSinglePermissionGui(title)) {
 			event.setCancelled(true);
-			ShanGui.handleSinglePermissionClick(player, slot);
+			ShanGui.handleSinglePermissionClick(player, slot, chestBlock, chestOwners, chestPermissions);
+		}
+		// 权限设置(单独) GUI - 添加权限
+		else if (ShanGui.isPermissionAddGui(title)) {
+			event.setCancelled(true);
+			boolean closed = ShanGui.handlePermissionAddClick(player, slot, chestBlock, chestOwners, chestPermissions);
+			if (closed) {
+				saveChestData();
+			}
+		}
+		// 取消权限(单独) GUI - 移除权限
+		else if (ShanGui.isPermissionRemoveGui(title)) {
+			event.setCancelled(true);
+			boolean closed = ShanGui.handlePermissionRemoveClick(player, slot, chestBlock, chestOwners, chestPermissions);
+			if (closed) {
+				saveChestData();
+			}
 		}
 	}
 	
@@ -268,7 +286,10 @@ public class Shan extends JavaPlugin implements Listener {
 		}
 		
 		String title = event.getView().getTitle();
-		if (!ShanGui.isBoxManageGui(title) && !ShanGui.isSinglePermissionGui(title)) {
+		if (!ShanGui.isBoxManageGui(title) && 
+			!ShanGui.isSinglePermissionGui(title) && 
+			!ShanGui.isPermissionAddGui(title) && 
+			!ShanGui.isPermissionRemoveGui(title)) {
 			return;
 		}
 		
@@ -346,9 +367,18 @@ public class Shan extends JavaPlugin implements Listener {
 	 */
 	private void saveChestData() {
 		try (BufferedWriter writer = new BufferedWriter(new FileWriter(dataFile))) {
+			// 保存箱子所有者
 			for (Map.Entry<String, UUID> entry : chestOwners.entrySet()) {
-				writer.write(entry.getKey() + "=" + entry.getValue().toString());
+				writer.write("owner:" + entry.getKey() + "=" + entry.getValue().toString());
 				writer.newLine();
+			}
+			// 保存箱子权限
+			for (Map.Entry<String, Set<UUID>> entry : chestPermissions.entrySet()) {
+				String locationKey = entry.getKey();
+				for (UUID uuid : entry.getValue()) {
+					writer.write("perm:" + locationKey + "=" + uuid.toString());
+					writer.newLine();
+				}
 			}
 		} catch (IOException e) {
 			getLogger().log(Level.SEVERE, "无法保存箱子数据", e);
@@ -369,9 +399,20 @@ public class Shan extends JavaPlugin implements Listener {
 				if (line.contains("=")) {
 					String[] parts = line.split("=", 2);
 					if (parts.length == 2) {
-						String locationKey = parts[0];
-						UUID ownerUUID = UUID.fromString(parts[1]);
-						chestOwners.put(locationKey, ownerUUID);
+						String key = parts[0];
+						String value = parts[1];
+						
+						if (key.startsWith("owner:")) {
+							// 加载箱子所有者
+							String locationKey = key.substring(6);
+							UUID ownerUUID = UUID.fromString(value);
+							chestOwners.put(locationKey, ownerUUID);
+						} else if (key.startsWith("perm:")) {
+							// 加载箱子权限
+							String locationKey = key.substring(5);
+							UUID playerUUID = UUID.fromString(value);
+							chestPermissions.computeIfAbsent(locationKey, k -> new HashSet<>()).add(playerUUID);
+						}
 					}
 				}
 			}
