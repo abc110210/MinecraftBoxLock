@@ -92,6 +92,9 @@ public class Shan extends JavaPlugin implements Listener {
 		// 释放 Gui.yml 文件到插件目录
 		saveResource("Gui.yml", false);
 		
+		// 加载GUI配置
+		ShanGui.loadGuiConfig(this);
+		
 		// 初始化 chests.yml
 		dataFile = new File(getDataFolder(), "chests.yml");
 		
@@ -811,6 +814,9 @@ public class Shan extends JavaPlugin implements Listener {
 			chestPasswords.clear();
 			playerDefaultPublicSettings.clear();
 			playerDefaultHopperSettings.clear();
+			
+			// 重新加载GUI配置
+			ShanGui.loadGuiConfig(this);
 			
 			// 重新加载数据
 			loadChestData();

@@ -11,8 +11,10 @@ import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.meta.ItemMeta;
 import org.bukkit.inventory.meta.SkullMeta;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.util.*;
+import java.io.File;
 
 public class ShanGui {
 	
@@ -24,6 +26,16 @@ public class ShanGui {
 	
 	public static void setPlugin(Plugin p) {
 		plugin = p;
+	}
+	
+	/**
+	 * 加载GUI配置文件
+	 */
+	public static void loadGuiConfig(Plugin plugin) {
+		File guiFile = new File(plugin.getDataFolder(), "Gui.yml");
+		if (guiFile.exists()) {
+			guiConfig = YamlConfiguration.loadConfiguration(guiFile);
+		}
 	}
 	
 	/**
@@ -46,6 +58,9 @@ public class ShanGui {
 		return false; // 不在冷却中
 	}
 	
+	// GUI配置
+	private static YamlConfiguration guiConfig;
+	
 	// GUI名称
 	private static final String BOX_MANAGE_TITLE = "§e箱子管理";
 	private static final String SINGLE_PERMISSION_TITLE = "§b单独权限设置";
@@ -67,8 +82,72 @@ public class ShanGui {
 	private static final int NEXT_PAGE_SLOT = 51;   // 下一页按钮 (倒数第3格, 黄绿色玻璃)
 	private static final int RETURN_SLOT = 53;      // 返回按钮 (全局权限GUI使用)
 	
-	// 打开箱子管理GUI界面 (3行)
-	public static void openBoxManageGui(Player player, Block chestBlock, Map<String, UUID> chestOwners, Set<String> publicChests, Set<String> hopperEnabledChests, Map<String, String> chestPasswords, Map<UUID, Boolean> playerDefaultPublicSettings) {
+	/**
+	 * 从配置文件创建GUI物品（不含变量替换）
+	 */
+	private static ItemStack createGuiItemFromConfig(YamlConfiguration config, String path, Material material) {
+		ItemStack item = new ItemStack(material);
+		ItemMeta meta = item.getItemMeta();
+		if (meta != null) {
+			// 读取名称
+			String name = config.getString(path + ".name");
+			if (name != null) {
+				meta.setDisplayName(name.replace('&', '§'));
+			}
+			
+			// 读取Lore
+			List<String> lore = config.getStringList(path + ".Lore");
+			if (!lore.isEmpty()) {
+				List<String> coloredLore = new ArrayList<>();
+				for (String line : lore) {
+					coloredLore.add(line.replace('&', '§'));
+				}
+				meta.setLore(coloredLore);
+			}
+			
+			meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+			item.setItemMeta(meta);
+		}
+		return item;
+	}
+	
+	/**
+	 * 从配置文件创建GUI物品（含变量替换）
+	 * @param variableName 变量名，如 "Lockstatus"
+	 * @param variableValue 变量值，如 "§a公开"
+	 */
+	private static ItemStack createGuiItemFromConfigWithVariable(YamlConfiguration config, String path, Material material, String variableName, String variableValue) {
+		ItemStack item = new ItemStack(material);
+		ItemMeta meta = item.getItemMeta();
+		if (meta != null) {
+			// 读取名称
+			String name = config.getString(path + ".name");
+			if (name != null) {
+				name = name.replace('&', '§').replace("{" + variableName + "}", variableValue);
+				meta.setDisplayName(name);
+			}
+			
+			// 读取Lore
+			List<String> lore = config.getStringList(path + ".Lore");
+			if (!lore.isEmpty()) {
+				List<String> coloredLore = new ArrayList<>();
+				for (String line : lore) {
+					line = line.replace('&', '§').replace("{" + variableName + "}", variableValue);
+					coloredLore.add(line);
+				}
+				meta.setLore(coloredLore);
+			}
+			
+			meta.addItemFlags(ItemFlag.HIDE_ATTRIBUTES);
+			item.setItemMeta(meta);
+		}
+		return item;
+	}
+	
+	/**
+	 * 默认箱子管理GUI（硬编码后备方案）
+	 */
+	private static void openBoxManageGuiDefault(Player player, Block chestBlock, Map<String, UUID> chestOwners, Set<String> publicChests, Set<String> hopperEnabledChests, Map<String, String> chestPasswords) {
 		Inventory gui = Bukkit.createInventory(null, GUI_ROWS * 9, BOX_MANAGE_TITLE);
 		
 		ItemStack blackGlass = createItem(Material.BLACK_STAINED_GLASS_PANE, " ");
@@ -86,7 +165,6 @@ public class ShanGui {
 		);
 		gui.setItem(12, wheat);
 		
-		// 箱子状态切换按钮
 		String locationKey = getLocationKey(chestBlock);
 		boolean isPublic = publicChests != null && publicChests.contains(locationKey);
 		String statusColor = isPublic ? "§a公开" : "§c私有";
@@ -100,7 +178,6 @@ public class ShanGui {
 		);
 		gui.setItem(14, chest);
 		
-		// 漏斗传输开关
 		boolean isHopperEnabled = hopperEnabledChests != null && hopperEnabledChests.contains(locationKey);
 		String hopperStatusColor = isHopperEnabled ? "§a开" : "§c关";
 		
@@ -111,7 +188,6 @@ public class ShanGui {
 		);
 		gui.setItem(16, hopper);
 		
-		// 密码箱按钮
 		boolean hasPassword = chestPasswords != null && chestPasswords.containsKey(locationKey);
 		String passwordStatus = hasPassword ? "§a已设置" : "§c未设置";
 		
@@ -123,16 +199,144 @@ public class ShanGui {
 		);
 		gui.setItem(20, paper);
 		
-		// 管理面板按钮
 		ItemStack repeater = createItem(Material.REPEATER, "§b管理面板",
 			" ",
 			"§8§l- §6管理你的默认箱子设置"
 		);
 		gui.setItem(22, repeater);
 		
-		// 待开发功能
 		ItemStack barrier = createItem(Material.BARRIER, "§c待开发");
 		gui.setItem(24, barrier);
+		
+		player.openInventory(gui);
+	}
+	
+	// 打开箱子管理GUI界面 (3行)
+	public static void openBoxManageGui(Player player, Block chestBlock, Map<String, UUID> chestOwners, Set<String> publicChests, Set<String> hopperEnabledChests, Map<String, String> chestPasswords, Map<UUID, Boolean> playerDefaultPublicSettings) {
+		// 如果配置文件未加载，使用默认硬编码
+		if (guiConfig == null) {
+			openBoxManageGuiDefault(player, chestBlock, chestOwners, publicChests, hopperEnabledChests, chestPasswords);
+			return;
+		}
+		
+		// 从配置读取GUI设置
+		String guiTitle = guiConfig.getString("Rongqi.name", "&e箱子管理");
+		guiTitle = guiTitle.replace('&', '§');
+		int rows = guiConfig.getInt("Rongqi.rows", 3);
+		
+		Inventory gui = Bukkit.createInventory(null, rows * 9, guiTitle);
+		
+		// 填充黑色玻璃
+		ItemStack blackGlass = createItem(Material.BLACK_STAINED_GLASS_PANE, " ");
+		for (int i = 0; i < rows * 9; i++) {
+			gui.setItem(i, blackGlass);
+		}
+		
+		String locationKey = getLocationKey(chestBlock);
+		boolean isPublic = publicChests != null && publicChests.contains(locationKey);
+		boolean isHopperEnabled = hopperEnabledChests != null && hopperEnabledChests.contains(locationKey);
+		boolean hasPassword = chestPasswords != null && chestPasswords.containsKey(locationKey);
+		
+		// 单独权限按钮
+		if (guiConfig.contains("Rongqi.Alone")) {
+			String materialStr = guiConfig.getString("Rongqi.Alone.material", "PLAYER_HEAD");
+			int slot = guiConfig.getInt("Rongqi.Alone.slot", 10);
+			
+			if (materialStr.equals("PLAYER_HEAD")) {
+				ItemStack ownerHead = createPlayerHead(chestBlock, chestOwners);
+				// 从配置读取名称和Lore
+				String name = guiConfig.getString("Rongqi.Alone.name", "&e单独权限").replace('&', '§');
+				ItemMeta meta = ownerHead.getItemMeta();
+				if (meta != null) {
+					meta.setDisplayName(name);
+					List<String> lore = guiConfig.getStringList("Rongqi.Alone.Lore");
+					if (!lore.isEmpty()) {
+						List<String> coloredLore = new ArrayList<>();
+						for (String line : lore) {
+							coloredLore.add(line.replace('&', '§'));
+						}
+						meta.setLore(coloredLore);
+					}
+					ownerHead.setItemMeta(meta);
+				}
+				gui.setItem(slot, ownerHead);
+			} else {
+				Material material = Material.matchMaterial(materialStr);
+				if (material != null) {
+					ItemStack item = createGuiItemFromConfig(guiConfig, "Rongqi.Alone", material);
+					gui.setItem(slot, item);
+				}
+			}
+		}
+		
+		// 全局权限按钮
+		if (guiConfig.contains("Rongqi.Global")) {
+			String materialStr = guiConfig.getString("Rongqi.Global.material", "WHEAT");
+			int slot = guiConfig.getInt("Rongqi.Global.slot", 12);
+			Material material = Material.matchMaterial(materialStr);
+			if (material != null) {
+				ItemStack item = createGuiItemFromConfig(guiConfig, "Rongqi.Global", material);
+				gui.setItem(slot, item);
+			}
+		}
+		
+		// 锁定开关按钮
+		if (guiConfig.contains("Rongqi.Lock")) {
+			String materialStr = guiConfig.getString("Rongqi.Lock.material", "CHEST");
+			int slot = guiConfig.getInt("Rongqi.Lock.slot", 14);
+			Material material = Material.matchMaterial(materialStr);
+			if (material != null) {
+				String lockStatus = isPublic ? "§a公开" : "§c私有";
+				ItemStack item = createGuiItemFromConfigWithVariable(guiConfig, "Rongqi.Lock", material, "Lockstatus", lockStatus);
+				gui.setItem(slot, item);
+			}
+		}
+		
+		// 漏斗开关按钮
+		if (guiConfig.contains("Rongqi.Funnel")) {
+			String materialStr = guiConfig.getString("Rongqi.Funnel.material", "HOPPER");
+			int slot = guiConfig.getInt("Rongqi.Funnel.slot", 16);
+			Material material = Material.matchMaterial(materialStr);
+			if (material != null) {
+				String funnelStatus = isHopperEnabled ? "§a开" : "§c关";
+				ItemStack item = createGuiItemFromConfigWithVariable(guiConfig, "Rongqi.Funnel", material, "Funnelstatus", funnelStatus);
+				gui.setItem(slot, item);
+			}
+		}
+		
+		// 密码箱按钮
+		if (guiConfig.contains("Rongqi.Password")) {
+			String materialStr = guiConfig.getString("Rongqi.Password.material", "PAPER");
+			int slot = guiConfig.getInt("Rongqi.Password.slot", 20);
+			Material material = Material.matchMaterial(materialStr);
+			if (material != null) {
+				String passwordStatus = hasPassword ? "§a已设置" : "§c未设置";
+				ItemStack item = createGuiItemFromConfigWithVariable(guiConfig, "Rongqi.Password", material, "password", passwordStatus);
+				gui.setItem(slot, item);
+			}
+		}
+		
+		// 管理面板按钮
+		if (guiConfig.contains("Rongqi.Manage")) {
+			String materialStr = guiConfig.getString("Rongqi.Manage.material", "REPEATER");
+			int slot = guiConfig.getInt("Rongqi.Manage.slot", 22);
+			Material material = Material.matchMaterial(materialStr);
+			if (material != null) {
+				ItemStack item = createGuiItemFromConfig(guiConfig, "Rongqi.Manage", material);
+				gui.setItem(slot, item);
+			}
+		}
+		
+		// 待开发功能
+		if (guiConfig.contains("Rongqi.Placeholder")) {
+			String materialStr = guiConfig.getString("Rongqi.Placeholder.material", "BARRIER");
+			int slot = guiConfig.getInt("Rongqi.Placeholder.slot", 24);
+			Material material = Material.matchMaterial(materialStr);
+			if (material != null) {
+				ItemStack item = createGuiItemFromConfig(guiConfig, "Rongqi.Placeholder", material);
+				gui.setItem(slot, item);
+			}
+		}
 		
 		player.openInventory(gui);
 	}
