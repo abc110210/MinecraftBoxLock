@@ -16,18 +16,27 @@ import java.util.logging.Level;
 
 /**
  * 玩家头颅缓存管理器
- * 持久化缓存头颅纹理数据，完全避免实时请求 Mojang API
+ * - 每分钟缓存一个未缓存的玩家头颅
+ * - 缓存有效期 14 天
+ * - 仅缓存本服玩家头颅
+ * - 纹理数据持久化到本地文件
  */
 public class ShanMeta {
 	
 	private static Plugin plugin;
 	private static File cacheFile;
+	
+	/** 缓存有效期：14 天 */
+	private static final long CACHE_EXPIRY_TIME = 14L * 24 * 60 * 60 * 1000;
+	
+	/** 每分钟缓存一个头颅 */
+	private static final long CACHE_TASK_INTERVAL_TICKS = 20L * 60; // 60 秒
+	
 	// 持久化缓存：存储玩家头颅纹理数据
 	private static Map<UUID, CachedHead> headCache = new ConcurrentHashMap<>();
 	
-	// 防抖保存相关
-	private static volatile boolean saveScheduled = false;
-	private static final long SAVE_DELAY_TICKS = 100L; // 5秒后保存
+	/** 定时缓存任务 ID */
+	private static int cacheTaskId = -1;
 	
 	/**
 	 * 初始化缓存系统
@@ -36,13 +45,11 @@ public class ShanMeta {
 		plugin = p;
 		cacheFile = new File(plugin.getDataFolder(), "head_cache.dat");
 		loadCache();
+		startPeriodicCache();
 	}
 	
 	/**
-	 * 创建带缓存的玩家头颅（优先使用本地纹理数据，完全不联网）
-	 * @param player 离线玩家对象
-	 * @param displayName 显示名称（包含颜色代码）
-	 * @return 玩家头颅物品
+	 * 创建带缓存的玩家头颅（优先使用本地缓存，完全不联网）
 	 */
 	public static ItemStack createCachedPlayerHead(OfflinePlayer player, String displayName) {
 		if (player == null) {
@@ -52,27 +59,23 @@ public class ShanMeta {
 		UUID playerUUID = player.getUniqueId();
 		CachedHead cachedHead = headCache.get(playerUUID);
 		
-		// 如果有缓存的纹理数据，直接使用纹理创建头颅（不联网）
-		if (cachedHead != null && !cachedHead.isExpired() && cachedHead.hasTexture()) {
+		// 有缓存且未过期，直接使用纹理创建头颅
+		if (cachedHead != null && !isExpired(cachedHead.getTimestamp()) && cachedHead.hasTexture()) {
 			return createHeadFromTexture(cachedHead, displayName);
 		}
 		
-		// 没有纹理缓存，返回默认头颅
+		// 无缓存或已过期，返回默认头颅（等待后台任务缓存）
 		return createEmptyHead(displayName);
 	}
 	
 	/**
-	 * 通过玩家名称创建头颅（会先查找 UUID）
-	 * @param playerName 玩家名称
-	 * @param displayName 显示名称（包含颜色代码）
-	 * @return 玩家头颅物品
+	 * 通过玩家名称创建头颅
 	 */
 	public static ItemStack createCachedPlayerHeadByName(String playerName, String displayName) {
-		// 先从缓存中查找
 		for (Map.Entry<UUID, CachedHead> entry : headCache.entrySet()) {
 			CachedHead value = entry.getValue();
 			if (value != null && value.getPlayerName() != null && value.getPlayerName().equals(playerName)) {
-				if (!value.isExpired() && value.hasTexture()) {
+				if (!isExpired(value.getTimestamp()) && value.hasTexture()) {
 					return createHeadFromTexture(value, displayName);
 				}
 			}
@@ -91,7 +94,6 @@ public class ShanMeta {
 			if (meta != null) {
 				meta.setDisplayName(displayName);
 				
-				// 使用 Spigot 1.21.1 API 直接设置纹理（不触发 Mojang API 请求）
 				org.bukkit.profile.PlayerProfile profile = Bukkit.createPlayerProfile(
 					cachedHead.getUuid(), 
 					cachedHead.getPlayerName() != null ? cachedHead.getPlayerName() : "Unknown"
@@ -130,42 +132,36 @@ public class ShanMeta {
 	}
 	
 	/**
-	 * 防抖保存缓存
+	 * 启动定时缓存任务：每分钟缓存一个未缓存的本服玩家头颅
 	 */
-	private static synchronized void scheduleSave() {
-		if (saveScheduled) {
-			return;
+	private static void startPeriodicCache() {
+		if (cacheTaskId != -1) {
+			Bukkit.getScheduler().cancelTask(cacheTaskId);
 		}
 		
-		saveScheduled = true;
-		Bukkit.getScheduler().runTaskLater(plugin, () -> {
-			Map<UUID, CachedHead> snapshot = new HashMap<>(headCache);
-			saveCache(snapshot);
-			saveScheduled = false;
-		}, SAVE_DELAY_TICKS);
+		cacheTaskId = Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, () -> {
+			try {
+				cacheOnePlayerHead();
+			} catch (Exception e) {
+				plugin.getLogger().log(Level.WARNING, "定时缓存任务异常", e);
+			}
+		}, CACHE_TASK_INTERVAL_TICKS, CACHE_TASK_INTERVAL_TICKS).getTaskId();
 	}
 	
 	/**
-	 * 预缓存玩家头颅（玩家加入时调用，异步获取纹理）
+	 * 缓存一个尚未缓存（或已过期）的本服在线玩家头颅
 	 */
-	public static void precachePlayerHead(Player player) {
-		if (player == null || plugin == null) {
-			return;
-		}
-		
-		UUID playerUUID = player.getUniqueId();
-		String playerName = player.getName();
-		
-		// 检查缓存是否已存在且有效
-		CachedHead cachedHead = headCache.get(playerUUID);
-		if (cachedHead != null && !cachedHead.isExpired() && cachedHead.hasTexture()) {
-			cachedHead.setTimestamp(System.currentTimeMillis());
-			scheduleSave();
-			return;
-		}
-		
-		// 异步预缓存
-		Bukkit.getScheduler().runTaskLaterAsynchronously(plugin, () -> {
+	private static void cacheOnePlayerHead() {
+		for (Player player : Bukkit.getOnlinePlayers()) {
+			UUID playerUUID = player.getUniqueId();
+			CachedHead cached = headCache.get(playerUUID);
+			
+			// 如果已缓存且未过期，跳过
+			if (cached != null && !isExpired(cached.getTimestamp()) && cached.hasTexture()) {
+				continue;
+			}
+			
+			// 找到第一个需要缓存的玩家
 			try {
 				ItemStack head = new ItemStack(org.bukkit.Material.PLAYER_HEAD);
 				SkullMeta meta = (SkullMeta) head.getItemMeta();
@@ -180,27 +176,28 @@ public class ShanMeta {
 						org.bukkit.profile.PlayerProfile profile = loadedMeta.getOwnerProfile();
 						if (profile != null) {
 							String textureValue = extractTextureValue(profile);
-							String textureSignature = extractTextureSignature(profile);
 							
 							if (textureValue != null) {
 								CachedHead newCache = new CachedHead(
-									playerUUID, 
-									playerName, 
-									System.currentTimeMillis(),
+									playerUUID,
+									player.getName(),
 									textureValue,
-									textureSignature
+									System.currentTimeMillis()
 								);
 								headCache.put(playerUUID, newCache);
-								scheduleSave();
-								plugin.getLogger().info("已预缓存玩家头颅: " + playerName + " (" + playerUUID + ")");
+								saveCache(headCache);
+								plugin.getLogger().info("已缓存玩家头颅: " + player.getName() + " (" + playerUUID + ")");
 							}
 						}
 					}
 				}
 			} catch (Exception e) {
-				plugin.getLogger().log(Level.WARNING, "预缓存玩家头颅失败: " + playerName, e);
+				plugin.getLogger().log(Level.WARNING, "缓存玩家头颅失败: " + player.getName(), e);
 			}
-		}, 20L);
+			
+			// 每次只缓存一个
+			return;
+		}
 	}
 	
 	/**
@@ -212,7 +209,6 @@ public class ShanMeta {
 			java.net.URL skinUrl = textures.getSkin();
 			if (skinUrl != null) {
 				String uri = skinUrl.toString();
-				// URL 格式: data:application/json;base64,xxxxx
 				if (uri.contains("base64,")) {
 					return uri.substring(uri.indexOf("base64,") + 7);
 				}
@@ -224,31 +220,27 @@ public class ShanMeta {
 	}
 	
 	/**
-	 * 从 PlayerProfile 提取纹理 signature
+	 * 检查时间戳是否过期
 	 */
-	private static String extractTextureSignature(org.bukkit.profile.PlayerProfile profile) {
-		// Spigot 1.21.1 没有直接的 signature API，返回 null
-		return null;
+	private static boolean isExpired(long timestamp) {
+		return System.currentTimeMillis() - timestamp > CACHE_EXPIRY_TIME;
 	}
 	
 	/**
-	 * 清理过期缓存
+	 * 手动清除所有缓存
 	 */
-	public static synchronized void cleanExpiredCache() {
-		int before = headCache.size();
-		headCache.values().removeIf(CachedHead::isExpired);
-		int removedCount = before - headCache.size();
-		
-		if (removedCount > 0) {
-			saveCache(new HashMap<>(headCache));
-			plugin.getLogger().info("已清理 " + removedCount + " 个过期的头颅缓存");
+	public static synchronized void clearCache() {
+		headCache.clear();
+		if (cacheFile.exists()) {
+			cacheFile.delete();
 		}
+		plugin.getLogger().info("已清除所有头颅缓存");
 	}
 	
 	/**
 	 * 保存缓存到文件
 	 */
-	private static void saveCache(Map<UUID, CachedHead> dataToSave) {
+	private static synchronized void saveCache(Map<UUID, CachedHead> dataToSave) {
 		try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(cacheFile))) {
 			oos.writeObject(dataToSave);
 		} catch (IOException e) {
@@ -270,32 +262,25 @@ public class ShanMeta {
 			if (obj instanceof Map) {
 				headCache = (Map<UUID, CachedHead>) obj;
 				plugin.getLogger().info("已加载 " + headCache.size() + " 个头颅缓存");
-				cleanExpiredCache();
+				
+				// 清理过期缓存
+				int before = headCache.size();
+				headCache.entrySet().removeIf(e -> isExpired(e.getValue().getTimestamp()));
+				int removed = before - headCache.size();
+				if (removed > 0) {
+					saveCache(headCache);
+					plugin.getLogger().info("已清理 " + removed + " 个过期的头颅缓存");
+				}
 			}
 		} catch (ClassNotFoundException e) {
 			plugin.getLogger().info("检测到旧版本缓存格式，正在重建缓存...");
 			headCache.clear();
-			if (cacheFile.exists()) {
-				cacheFile.delete();
-			}
-		} catch (IOException | ClassCastException e) {
+			if (cacheFile.exists()) cacheFile.delete();
+		} catch (IOException | ClassCastException | java.io.InvalidClassException e) {
 			plugin.getLogger().log(Level.WARNING, "无法加载头颅缓存，将重建缓存", e);
 			headCache.clear();
-			if (cacheFile.exists()) {
-				cacheFile.delete();
-			}
+			if (cacheFile.exists()) cacheFile.delete();
 		}
-	}
-	
-	/**
-	 * 手动清除所有缓存
-	 */
-	public static void clearCache() {
-		headCache.clear();
-		if (cacheFile.exists()) {
-			cacheFile.delete();
-		}
-		plugin.getLogger().info("已清除所有头颅缓存");
 	}
 	
 	/**
@@ -304,20 +289,16 @@ public class ShanMeta {
 	public static String getCacheStats() {
 		int validCount = 0;
 		int expiredCount = 0;
-		int withTexture = 0;
 		
 		for (CachedHead cachedHead : headCache.values()) {
-			if (cachedHead.isExpired()) {
+			if (isExpired(cachedHead.getTimestamp())) {
 				expiredCount++;
 			} else {
 				validCount++;
-				if (cachedHead.hasTexture()) {
-					withTexture++;
-				}
 			}
 		}
 		
-		return String.format("头颅缓存统计 - 有效: %d (有纹理: %d), 过期: %d, 总计: %d", 
-			validCount, withTexture, expiredCount, headCache.size());
+		return String.format("头颅缓存统计 - 有效: %d, 过期: %d, 总计: %d", 
+			validCount, expiredCount, headCache.size());
 	}
 }

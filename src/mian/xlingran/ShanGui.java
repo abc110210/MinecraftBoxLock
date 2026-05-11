@@ -27,9 +27,9 @@ public class ShanGui {
 	private static final String SINGLE_PERMISSION_TITLE = "§b单独权限设置";
 	private static final String PERMISSION_ADD_TITLE = "§a权限设置(单独)";
 	private static final String PERMISSION_REMOVE_TITLE = "§c取消权限(单独)";
-	private static final String GLOBAL_PERMISSION_TITLE = "§a全局权限设置";
-	private static final String GLOBAL_ADD_TITLE = "§a添加全局权限";
-	private static final String GLOBAL_REMOVE_TITLE = "§c删除全局权限";
+	private static final String GLOBAL_PERMISSION_TITLE = "§b全局权限设置";
+	private static final String GLOBAL_ADD_TITLE = "§a权限设置(全局)";
+	private static final String GLOBAL_REMOVE_TITLE = "§c取消权限(全局)";
 	// GUI行数
 	private static final int GUI_ROWS = 3;      // 箱子管理 3行
 	private static final int SINGLE_ROWS = 3;   // 单独权限设置 3行
@@ -43,7 +43,7 @@ public class ShanGui {
 	private static final int RETURN_SLOT = 53;      // 返回按钮 (全局权限GUI使用)
 	
 	// 打开箱子管理GUI界面 (3行)
-	public static void openBoxManageGui(Player player, Block chestBlock, Map<String, UUID> chestOwners) {
+	public static void openBoxManageGui(Player player, Block chestBlock, Map<String, UUID> chestOwners, Set<String> publicChests) {
 		Inventory gui = Bukkit.createInventory(null, GUI_ROWS * 9, BOX_MANAGE_TITLE);
 		
 		ItemStack blackGlass = createItem(Material.BLACK_STAINED_GLASS_PANE, " ");
@@ -61,12 +61,17 @@ public class ShanGui {
 		);
 		gui.setItem(12, wheat);
 		
+		// 箱子状态切换按钮
+		String locationKey = getLocationKey(chestBlock);
+		boolean isPublic = publicChests != null && publicChests.contains(locationKey);
+		String statusColor = isPublic ? "§a公开" : "§c私有";
+		
 		ItemStack chest = createItem(Material.CHEST, "§9锁定开关",
 			" ",
 			"§8§l- §6在这里切换你的箱子状态",
 			"§b私有 §8- §6拥有权限的玩家才能打开",
 			"§b公开 §8- §6所有的玩家都可以打开你的箱子",
-			" "
+			"§e当前状态: " + statusColor
 		);
 		gui.setItem(14, chest);
 		
@@ -414,7 +419,7 @@ public class ShanGui {
 	}
 	
 	// 箱子管理GUI点击
-	public static void handleBoxManageClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<String, Set<UUID>> chestPermissions, Map<UUID, Set<UUID>> globalPermissions) {
+	public static void handleBoxManageClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<String, Set<UUID>> chestPermissions, Map<UUID, Set<UUID>> globalPermissions, Set<String> publicChests) {
 		switch (slot) {
 			case 10: 
 				openSinglePermissionGui(player, chestBlock, chestOwners);
@@ -422,9 +427,22 @@ public class ShanGui {
 			case 12: 
 				openGlobalPermissionGui(player, chestBlock, chestOwners);
 				break;
-			case 14: 
-				player.sendMessage("§c§l§n锁定开关");
+			case 14: {
+				// 切换箱子公开/私有状态
+				String locationKey = getLocationKey(chestBlock);
+				if (publicChests.contains(locationKey)) {
+					publicChests.remove(locationKey);
+					player.sendMessage("§a已将箱子设置为 §c私有 §a状态");
+				} else {
+					publicChests.add(locationKey);
+					player.sendMessage("§a已将箱子设置为 §a公开 §a状态，全服玩家可打开但无法破坏");
+				}
+				// 刷新GUI
+				Bukkit.getScheduler().runTaskLater(plugin, () -> {
+					openBoxManageGui(player, chestBlock, chestOwners, publicChests);
+				}, 2L);
 				break;
+			}
 			case 16: 
 				player.sendMessage("§b§l§n漏斗开关");
 				break;
@@ -432,7 +450,7 @@ public class ShanGui {
 	}
 	
 	// 单独权限设置GUI点击
-	public static void handleSinglePermissionClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<String, Set<UUID>> chestPermissions) {
+	public static void handleSinglePermissionClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<String, Set<UUID>> chestPermissions, Set<String> publicChests) {
 		switch (slot) {
 			case 11: 
 				openPermissionAddGui(player, chestBlock, chestOwners, chestPermissions);
@@ -441,13 +459,13 @@ public class ShanGui {
 				openPermissionRemoveGui(player, chestBlock, chestOwners, chestPermissions, 0);
 				break;
 			case 26: 
-				openBoxManageGui(player, chestBlock, chestOwners);
+				openBoxManageGui(player, chestBlock, chestOwners, publicChests);
 				break;
 		}
 	}
 	
 	// 全局权限设置GUI点击
-	public static void handleGlobalPermissionClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Set<UUID>> globalPermissions) {
+	public static void handleGlobalPermissionClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Set<UUID>> globalPermissions, Set<String> publicChests) {
 		switch (slot) {
 			case 11: 
 				openGlobalAddGui(player, chestBlock, chestOwners, globalPermissions);
@@ -456,7 +474,7 @@ public class ShanGui {
 				openGlobalRemoveGui(player, chestBlock, chestOwners, globalPermissions, 0);
 				break;
 			case 26: 
-				openBoxManageGui(player, chestBlock, chestOwners);
+				openBoxManageGui(player, chestBlock, chestOwners, publicChests);
 				break;
 		}
 	}

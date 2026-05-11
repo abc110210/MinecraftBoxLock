@@ -51,6 +51,7 @@ public class Shan extends JavaPlugin implements Listener {
 	private Map<String, UUID> chestOwners = new HashMap<>();
 	private Map<String, Set<UUID>> chestPermissions = new HashMap<>();
 	private Map<UUID, Set<UUID>> globalPermissions = new HashMap<>();
+	private Set<String> publicChests = new HashSet<>(); // 公开的箱子（全服可打开但无法破坏）
 	private File dataFile;
 	
 	private Set<UUID> guiOpeningPlayers = new HashSet<>();
@@ -112,8 +113,7 @@ public class Shan extends JavaPlugin implements Listener {
 	//监听防止事件
 	@EventHandler
 	public void onPlayerJoin(org.bukkit.event.player.PlayerJoinEvent event) {
-		// 玩家加入时预缓存头颅数据，避免后续 GUI 打开时频繁请求 Mojang API
-		ShanMeta.precachePlayerHead(event.getPlayer());
+		// 新的头颅缓存系统使用定时任务自动缓存，无需手动预缓存
 	}
 	
 	@EventHandler
@@ -208,12 +208,25 @@ public class Shan extends JavaPlugin implements Listener {
 		String locationKey = getLocationKey(block);
 		UUID ownerUUID = chestOwners.get(locationKey);
 		
-		if (ownerUUID != null && !hasChestPermission(locationKey, player)) {
-			event.setCancelled(true);
-			player.sendMessage("§c这个箱子已被锁定，您无法破坏！");
-		} else if (ownerUUID != null) {
+		if (ownerUUID != null) {
+			// 公开箱子：只有所有者可以破坏
+			if (publicChests.contains(locationKey) && !ownerUUID.equals(player.getUniqueId())) {
+				event.setCancelled(true);
+				player.sendMessage("§c这个箱子是公开的，您无法破坏！");
+				return;
+			}
+			
+			// 私有箱子：无权限的玩家无法破坏
+			if (!hasChestPermission(locationKey, player)) {
+				event.setCancelled(true);
+				player.sendMessage("§c这个箱子已被锁定，您无法破坏！");
+				return;
+			}
+			
+			// 有权限的破坏：清除数据
 			chestOwners.remove(locationKey);
 			chestPermissions.remove(locationKey);
+			publicChests.remove(locationKey);
 			saveChestData();
 		}
 	}
@@ -283,20 +296,16 @@ public class Shan extends JavaPlugin implements Listener {
 		
 		if (ShanGui.isBoxManageGui(title)) {
 			event.setCancelled(true);
-			if (slot == 10 || slot == 12) {
-				switchingGuiPlayers.add(player.getUniqueId());
-				final String loc = chestLocation;
-				final int s = slot;
-				Bukkit.getScheduler().runTaskLater(this, () -> {
-					Block cb = parseBlockLocation(player, loc);
-					if (cb != null) {
-						ShanGui.handleBoxManageClick(player, s, cb, chestOwners, chestPermissions, globalPermissions);
-					}
-					switchingGuiPlayers.remove(player.getUniqueId());
-				}, 2L);
-			} else {
-				ShanGui.handleBoxManageClick(player, slot, chestBlock, chestOwners, chestPermissions, globalPermissions);
-			}
+			switchingGuiPlayers.add(player.getUniqueId());
+			final String loc = chestLocation;
+			final int s = slot;
+			Bukkit.getScheduler().runTaskLater(this, () -> {
+				Block cb = parseBlockLocation(player, loc);
+				if (cb != null) {
+					ShanGui.handleBoxManageClick(player, s, cb, chestOwners, chestPermissions, globalPermissions, publicChests);
+				}
+				switchingGuiPlayers.remove(player.getUniqueId());
+			}, 2L);
 		}
 		else if (ShanGui.isSinglePermissionGui(title)) {
 			event.setCancelled(true);
@@ -306,7 +315,7 @@ public class Shan extends JavaPlugin implements Listener {
 			Bukkit.getScheduler().runTaskLater(this, () -> {
 				Block cb = parseBlockLocation(player, loc);
 				if (cb != null) {
-					ShanGui.handleSinglePermissionClick(player, s, cb, chestOwners, chestPermissions);
+					ShanGui.handleSinglePermissionClick(player, s, cb, chestOwners, chestPermissions, publicChests);
 				}
 				switchingGuiPlayers.remove(player.getUniqueId());
 			}, 2L);
@@ -319,7 +328,7 @@ public class Shan extends JavaPlugin implements Listener {
 			Bukkit.getScheduler().runTaskLater(this, () -> {
 				Block cb = parseBlockLocation(player, loc);
 				if (cb != null) {
-					ShanGui.handleGlobalPermissionClick(player, s, cb, chestOwners, globalPermissions);
+					ShanGui.handleGlobalPermissionClick(player, s, cb, chestOwners, globalPermissions, publicChests);
 				}
 				switchingGuiPlayers.remove(player.getUniqueId());
 			}, 2L);
@@ -388,10 +397,8 @@ public class Shan extends JavaPlugin implements Listener {
 		
 		Player player = (Player) event.getPlayer();
 		
+		// 正在切换 GUI 时忽略关闭事件，由延迟任务统一管理状态
 		if (switchingGuiPlayers.contains(player.getUniqueId())) {
-			Bukkit.getScheduler().runTaskLater(this, () -> {
-				switchingGuiPlayers.remove(player.getUniqueId());
-			}, 1L);
 			return;
 		}
 		
@@ -406,7 +413,7 @@ public class Shan extends JavaPlugin implements Listener {
 			guiOpeningPlayers.remove(player.getUniqueId());
 		}, 1L);
 		
-		ShanGui.openBoxManageGui(player, chestBlock, chestOwners);
+		ShanGui.openBoxManageGui(player, chestBlock, chestOwners, publicChests);
 	}
 	
 	// 字符串 Block
@@ -472,6 +479,11 @@ public class Shan extends JavaPlugin implements Listener {
 					writer.newLine();
 				}
 			}
+			// 保存公开箱子数据
+			for (String locationKey : publicChests) {
+				writer.write("public:" + locationKey);
+				writer.newLine();
+			}
 		} catch (IOException e) {
 			getLogger().log(Level.SEVERE, "无法保存箱子数据", e);
 		}
@@ -506,11 +518,15 @@ public class Shan extends JavaPlugin implements Listener {
 							UUID ownerUUID = UUID.fromString(ownerUUIDStr);
 							UUID authorizedUUID = UUID.fromString(value);
 							globalPermissions.computeIfAbsent(ownerUUID, k -> new HashSet<>()).add(authorizedUUID);
+						} else if (key.startsWith("public:")) {
+							// 加载公开箱子数据
+							String locationKey = key.substring(7);
+							publicChests.add(locationKey);
 						}
 					}
 				}
 			}
-			getLogger().info("已加载 " + chestOwners.size() + " 个箱子的数据，" + globalPermissions.size() + " 个全局授权关系");
+			getLogger().info("已加载 " + chestOwners.size() + " 个箱子的数据，" + globalPermissions.size() + " 个全局授权关系，" + publicChests.size() + " 个公开箱子");
 		} catch (IOException e) {
 			getLogger().log(Level.SEVERE, "无法加载箱子数据", e);
 		}
@@ -615,12 +631,17 @@ public class Shan extends JavaPlugin implements Listener {
 		return true;
 	}
 	
-	// 检查玩家是否有权限打开箱子（包括全局授权）
+	// 检查玩家是否有权限打开箱子（包括全局授权 + 公开箱子）
 	private boolean hasChestPermission(String locationKey, Player player) {
 		UUID ownerUUID = chestOwners.get(locationKey);
 		
 		// 如果是箱子所有者，直接返回 true
 		if (ownerUUID != null && ownerUUID.equals(player.getUniqueId())) {
+			return true;
+		}
+		
+		// 公开箱子：所有人可以打开
+		if (publicChests.contains(locationKey)) {
 			return true;
 		}
 		
