@@ -18,8 +18,32 @@ public class ShanGui {
 	
 	private static Plugin plugin;
 	
+	// 玩家点击冷却时间记录 (防止点击过快导致GUI失效)
+	private static final Map<UUID, Long> playerClickCooldowns = new HashMap<>();
+	private static final long CLICK_COOLDOWN_MS = 500; // 500毫秒冷却时间
+	
 	public static void setPlugin(Plugin p) {
 		plugin = p;
+	}
+	
+	/**
+	 * 检查玩家是否在冷却中
+	 * @return true 表示在冷却中，false 表示可以点击
+	 */
+	private static boolean isOnCooldown(Player player) {
+		UUID playerUUID = player.getUniqueId();
+		long currentTime = System.currentTimeMillis();
+		
+		if (playerClickCooldowns.containsKey(playerUUID)) {
+			long lastClickTime = playerClickCooldowns.get(playerUUID);
+			if (currentTime - lastClickTime < CLICK_COOLDOWN_MS) {
+				return true; // 在冷却中
+			}
+		}
+		
+		// 更新点击时间
+		playerClickCooldowns.put(playerUUID, currentTime);
+		return false; // 不在冷却中
 	}
 	
 	// GUI名称
@@ -30,20 +54,21 @@ public class ShanGui {
 	private static final String GLOBAL_PERMISSION_TITLE = "§b全局权限设置";
 	private static final String GLOBAL_ADD_TITLE = "§a权限设置(全局)";
 	private static final String GLOBAL_REMOVE_TITLE = "§c取消权限(全局)";
+	private static final String MANAGEMENT_PANEL_TITLE = "§b管理面板";
 	// GUI行数
 	private static final int GUI_ROWS = 3;      // 箱子管理 3行
 	private static final int SINGLE_ROWS = 3;   // 单独权限设置 3行
 	private static final int PERMISSION_ADD_ROWS = 6;    // 54格 (最大)
 	private static final int PERMISSION_REMOVE_ROWS = 6; // 54格 (带分页)
 	private static final int GLOBAL_ROWS = 3;   // 全局权限设置 3行
-	// 分页常量
+	private static final int MANAGEMENT_PANEL_ROWS = 1; // 管理面板 1行
 	private static final int PLAYERS_PER_PAGE = 28; // 每页显示玩家数量 (4行×7列)
 	private static final int PREV_PAGE_SLOT = 47;   // 上一页按钮 (倒数第7格, 黄绿色玻璃)
 	private static final int NEXT_PAGE_SLOT = 51;   // 下一页按钮 (倒数第3格, 黄绿色玻璃)
 	private static final int RETURN_SLOT = 53;      // 返回按钮 (全局权限GUI使用)
 	
 	// 打开箱子管理GUI界面 (3行)
-	public static void openBoxManageGui(Player player, Block chestBlock, Map<String, UUID> chestOwners, Set<String> publicChests, Set<String> hopperEnabledChests, Map<String, String> chestPasswords) {
+	public static void openBoxManageGui(Player player, Block chestBlock, Map<String, UUID> chestOwners, Set<String> publicChests, Set<String> hopperEnabledChests, Map<String, String> chestPasswords, Map<UUID, Boolean> playerDefaultPublicSettings) {
 		Inventory gui = Bukkit.createInventory(null, GUI_ROWS * 9, BOX_MANAGE_TITLE);
 		
 		ItemStack blackGlass = createItem(Material.BLACK_STAINED_GLASS_PANE, " ");
@@ -97,6 +122,38 @@ public class ShanGui {
 			"§e当前状态: " + passwordStatus
 		);
 		gui.setItem(20, paper);
+		
+		// 管理面板按钮
+		ItemStack composter = createItem(Material.COMPOSTER, "§b管理面板",
+			" ",
+			"§8§l- §6管理你的默认箱子设置"
+		);
+		gui.setItem(24, composter);
+		
+		player.openInventory(gui);
+	}
+	
+	// 打开管理面板GUI (1行)
+	public static void openManagementPanelGui(Player player, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Boolean> playerDefaultPublicSettings) {
+		Inventory gui = Bukkit.createInventory(null, MANAGEMENT_PANEL_ROWS * 9, MANAGEMENT_PANEL_TITLE);
+		
+		ItemStack blackGlass = createItem(Material.BLACK_STAINED_GLASS_PANE, " ");
+		for (int i = 0; i < 9; i++) {
+			gui.setItem(i, blackGlass);
+		}
+		
+		// 默认公开/私有设置按钮 (第2格，索引为1)
+		UUID ownerUUID = player.getUniqueId();
+		boolean isDefaultPublic = playerDefaultPublicSettings.getOrDefault(ownerUUID, false);
+		String defaultStatus = isDefaultPublic ? "§a公开" : "§c私有";
+		
+		ItemStack book = createItem(Material.BOOK, "§b默认公开/私有设置",
+			" ",
+			"§3私有§8§l- §6你新放置的箱子默认为私有",
+			"§3公开§8§l- §6你新放置的箱子默认为公开",
+			"§e当前默认状态: " + defaultStatus
+		);
+		gui.setItem(1, book);
 		
 		player.openInventory(gui);
 	}
@@ -435,7 +492,12 @@ public class ShanGui {
 	}
 	
 	// 箱子管理GUI点击
-	public static void handleBoxManageClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<String, Set<UUID>> chestPermissions, Map<UUID, Set<UUID>> globalPermissions, Set<String> publicChests, Set<String> hopperEnabledChests, Map<String, String> chestPasswords) {
+	public static void handleBoxManageClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<String, Set<UUID>> chestPermissions, Map<UUID, Set<UUID>> globalPermissions, Set<String> publicChests, Set<String> hopperEnabledChests, Map<String, String> chestPasswords, Map<UUID, Boolean> playerDefaultPublicSettings) {
+		// 检查点击冷却
+		if (isOnCooldown(player)) {
+			return; // 在冷却中，忽略点击
+		}
+		
 		switch (slot) {
 			case 10: 
 				openSinglePermissionGui(player, chestBlock, chestOwners);
@@ -455,7 +517,7 @@ public class ShanGui {
 				}
 				// 刷新GUI
 				Bukkit.getScheduler().runTaskLater(plugin, () -> {
-					openBoxManageGui(player, chestBlock, chestOwners, publicChests, hopperEnabledChests, chestPasswords);
+					openBoxManageGui(player, chestBlock, chestOwners, publicChests, hopperEnabledChests, chestPasswords, playerDefaultPublicSettings);
 				}, 2L);
 				break;
 			}
@@ -471,7 +533,7 @@ public class ShanGui {
 				}
 				// 刷新GUI
 				Bukkit.getScheduler().runTaskLater(plugin, () -> {
-					openBoxManageGui(player, chestBlock, chestOwners, publicChests, hopperEnabledChests, chestPasswords);
+					openBoxManageGui(player, chestBlock, chestOwners, publicChests, hopperEnabledChests, chestPasswords, playerDefaultPublicSettings);
 				}, 2L);
 				break;
 			}
@@ -484,12 +546,11 @@ public class ShanGui {
 					player.sendMessage("§a已清除该箱子的密码保护");
 					// 刷新GUI
 					Bukkit.getScheduler().runTaskLater(plugin, () -> {
-						openBoxManageGui(player, chestBlock, chestOwners, publicChests, hopperEnabledChests, chestPasswords);
+						openBoxManageGui(player, chestBlock, chestOwners, publicChests, hopperEnabledChests, chestPasswords, playerDefaultPublicSettings);
 					}, 2L);
 				} else {
 					// 没有密码，进入等待输入状态
-					player.sendMessage("§a请输入 §b4~8 位 §a密码（仅支持英文和数字）");
-					player.sendMessage("§a输入 §equit §a取消设置");
+					player.sendMessage("§a请输入 §b4~8 位 §a密码（仅支持英文和数字，输入 §equit §a取消设置）");
 								
 					// 标记玩家正在设置密码并记录对应的箱子位置
 					player.closeInventory();
@@ -497,11 +558,41 @@ public class ShanGui {
 				}
 				break;
 			}
+			case 24: {
+				// 管理面板按钮
+				openManagementPanelGui(player, chestBlock, chestOwners, playerDefaultPublicSettings);
+				break;
+			}
+		}
+	}
+	
+	// 管理面板GUI点击
+	public static void handleManagementPanelClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Boolean> playerDefaultPublicSettings) {
+		// 检查点击冷却
+		if (isOnCooldown(player)) {
+			return; // 在冷却中，忽略点击
+		}
+		
+		if (slot == 1) {
+			UUID ownerUUID = player.getUniqueId();
+			boolean currentDefault = playerDefaultPublicSettings.getOrDefault(ownerUUID, false);
+			boolean newDefault = !currentDefault;
+			playerDefaultPublicSettings.put(ownerUUID, newDefault);
+			player.sendMessage("§a已将新放置箱子的默认状态设置为 §" + (newDefault ? "a公开" : "c私有"));
+			// 刷新管理面板GUI
+			Bukkit.getScheduler().runTaskLater(plugin, () -> {
+				openManagementPanelGui(player, chestBlock, chestOwners, playerDefaultPublicSettings);
+			}, 2L);
 		}
 	}
 	
 	// 单独权限设置GUI点击
-	public static void handleSinglePermissionClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<String, Set<UUID>> chestPermissions, Set<String> publicChests, Set<String> hopperEnabledChests, Map<String, String> chestPasswords) {
+	public static void handleSinglePermissionClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<String, Set<UUID>> chestPermissions, Set<String> publicChests, Set<String> hopperEnabledChests, Map<String, String> chestPasswords, Map<UUID, Boolean> playerDefaultPublicSettings) {
+		// 检查点击冷却
+		if (isOnCooldown(player)) {
+			return; // 在冷却中，忽略点击
+		}
+		
 		switch (slot) {
 			case 11: 
 				openPermissionAddGui(player, chestBlock, chestOwners, chestPermissions);
@@ -510,13 +601,18 @@ public class ShanGui {
 				openPermissionRemoveGui(player, chestBlock, chestOwners, chestPermissions, 0);
 				break;
 			case 26: 
-				openBoxManageGui(player, chestBlock, chestOwners, publicChests, hopperEnabledChests, chestPasswords);
+				openBoxManageGui(player, chestBlock, chestOwners, publicChests, hopperEnabledChests, chestPasswords, playerDefaultPublicSettings);
 				break;
 		}
 	}
 	
 	// 全局权限设置GUI点击
-	public static void handleGlobalPermissionClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Set<UUID>> globalPermissions, Set<String> publicChests, Set<String> hopperEnabledChests, Map<String, String> chestPasswords) {
+	public static void handleGlobalPermissionClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Set<UUID>> globalPermissions, Set<String> publicChests, Set<String> hopperEnabledChests, Map<String, String> chestPasswords, Map<UUID, Boolean> playerDefaultPublicSettings) {
+		// 检查点击冷却
+		if (isOnCooldown(player)) {
+			return; // 在冷却中，忽略点击
+		}
+		
 		switch (slot) {
 			case 11: 
 				openGlobalAddGui(player, chestBlock, chestOwners, globalPermissions);
@@ -525,13 +621,23 @@ public class ShanGui {
 				openGlobalRemoveGui(player, chestBlock, chestOwners, globalPermissions, 0);
 				break;
 			case 26: 
-				openBoxManageGui(player, chestBlock, chestOwners, publicChests, hopperEnabledChests, chestPasswords);
+				openBoxManageGui(player, chestBlock, chestOwners, publicChests, hopperEnabledChests, chestPasswords, playerDefaultPublicSettings);
 				break;
 		}
 	}
 	
+	// 判断是否管理面板GUI
+	public static boolean isManagementPanelGui(String title) {
+		return MANAGEMENT_PANEL_TITLE.equals(title);
+	}
+	
 	// 添加全局权限
 	public static boolean handleGlobalAddClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Set<UUID>> globalPermissions, Map<String, Set<UUID>> chestPermissions, Set<UUID> switchingGuiPlayers) {
+		// 检查点击冷却
+		if (isOnCooldown(player)) {
+			return false; // 在冷却中，忽略点击
+		}
+		
 		UUID ownerUUID = chestOwners.get(getLocationKey(chestBlock));
 		if (ownerUUID == null) {
 			return false;
@@ -582,6 +688,11 @@ public class ShanGui {
 	
 	// 删除全局权限
 	public static boolean handleGlobalRemoveClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Set<UUID>> globalPermissions, Map<String, Set<UUID>> chestPermissions, Map<UUID, Integer> playerGuiPages, Set<UUID> switchingGuiPlayers, int currentPage) {
+		// 检查点击冷却
+		if (isOnCooldown(player)) {
+			return false; // 在冷却中，忽略点击
+		}
+		
 		UUID ownerUUID = chestOwners.get(getLocationKey(chestBlock));
 		if (ownerUUID == null) {
 			return false;
@@ -676,6 +787,11 @@ public class ShanGui {
 	
 	// 添加权限
 	public static boolean handlePermissionAddClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<String, Set<UUID>> chestPermissions) {
+		// 检查点击冷却
+		if (isOnCooldown(player)) {
+			return false; // 在冷却中，忽略点击
+		}
+		
 		String locationKey = getLocationKey(chestBlock);
 		Set<UUID> allowedPlayers = chestPermissions.computeIfAbsent(locationKey, k -> new HashSet<>());
 		
@@ -707,6 +823,11 @@ public class ShanGui {
 	
 	// 移除权限
 	public static boolean handlePermissionRemoveClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<String, Set<UUID>> chestPermissions, Map<UUID, Integer> playerGuiPages, Set<UUID> switchingGuiPlayers, int currentPage) {
+		// 检查点击冷却
+		if (isOnCooldown(player)) {
+			return false; // 在冷却中，忽略点击
+		}
+		
 		String locationKey = getLocationKey(chestBlock);
 		Set<UUID> allowedPlayers = chestPermissions.get(locationKey);
 		
