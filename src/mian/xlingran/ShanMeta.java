@@ -43,7 +43,15 @@ public class ShanMeta {
 	 */
 	public static void init(Plugin p) {
 		plugin = p;
+		
+		// 确保插件数据目录存在
+		if (!plugin.getDataFolder().exists()) {
+			plugin.getDataFolder().mkdirs();
+		}
+		
 		cacheFile = new File(plugin.getDataFolder(), "head_cache.dat");
+		plugin.getLogger().info("头颅缓存文件路径: " + cacheFile.getAbsolutePath());
+		
 		loadCache();
 		startPeriodicCache();
 	}
@@ -163,32 +171,26 @@ public class ShanMeta {
 			
 			// 找到第一个需要缓存的玩家
 			try {
-				// 使用 Bukkit.getOfflinePlayer() 获取玩家资料（使用服务器已有缓存）
-				OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(playerUUID);
-				org.bukkit.profile.PlayerProfile profile = offlinePlayer.getPlayerProfile();
+				// 优先使用 Player 对象获取资料（包含已加载的会话皮肤数据）
+				org.bukkit.profile.PlayerProfile profile = player.getPlayerProfile();
+				String textureValue = extractTextureValue(profile, player.getName());
 				
-				if (profile != null) {
-					// 尝试从已有资料中提取纹理
-					String textureValue = extractTextureValue(profile);
-					
-					// 如果没有纹理数据，说明服务器缓存中还没有，跳过等待下次
-					if (textureValue == null) {
-						plugin.getLogger().info("玩家 " + player.getName() + " 纹理数据尚未加载，跳过等待下次缓存");
-						continue;
-					}
-					
-					CachedHead newCache = new CachedHead(
-						playerUUID,
-						player.getName(),
-						textureValue,
-						System.currentTimeMillis()
-					);
-					headCache.put(playerUUID, newCache);
-					saveCache(headCache);
-					plugin.getLogger().info("已缓存玩家头颅: " + player.getName() + " (" + playerUUID + ")");
+				if (textureValue == null) {
+					plugin.getLogger().info("[头颅缓存] 玩家 " + player.getName() + " 纹理数据尚未加载或请求被拒绝(429)，跳过等待下次");
+					continue;
 				}
+				
+				CachedHead newCache = new CachedHead(
+					playerUUID,
+					player.getName(),
+					textureValue,
+					System.currentTimeMillis()
+				);
+				headCache.put(playerUUID, newCache);
+				saveCache(headCache);
+				plugin.getLogger().info("[头颅缓存] 成功缓存: " + player.getName() + " (纹理长度: " + textureValue.length() + ")");
 			} catch (Exception e) {
-				plugin.getLogger().log(Level.WARNING, "缓存玩家头颅失败: " + player.getName(), e);
+				plugin.getLogger().log(Level.WARNING, "[头颅缓存] 缓存失败: " + player.getName(), e);
 			}
 			
 			// 每次只缓存一个
@@ -199,18 +201,23 @@ public class ShanMeta {
 	/**
 	 * 从 PlayerProfile 提取纹理 value
 	 */
-	private static String extractTextureValue(org.bukkit.profile.PlayerProfile profile) {
+	private static String extractTextureValue(org.bukkit.profile.PlayerProfile profile, String debugName) {
 		try {
+			if (profile == null) {
+				plugin.getLogger().info("[头颅缓存] 提取纹理失败: " + debugName + " 资料为空");
+				return null;
+			}
 			org.bukkit.profile.PlayerTextures textures = profile.getTextures();
 			java.net.URL skinUrl = textures.getSkin();
 			if (skinUrl != null) {
-				String uri = skinUrl.toString();
-				if (uri.contains("base64,")) {
-					return uri.substring(uri.indexOf("base64,") + 7);
+				String urlStr = skinUrl.toString();
+				if (urlStr.contains("base64,")) {
+					return urlStr.substring(urlStr.indexOf("base64,") + 7);
 				}
 			}
+			plugin.getLogger().info("[头颅缓存] 提取纹理失败: " + debugName + " 皮肤 URL 未包含 base64 数据");
 		} catch (Exception e) {
-			// 忽略
+			plugin.getLogger().log(Level.WARNING, "[头颅缓存] 提取纹理异常: " + debugName, e);
 		}
 		return null;
 	}
@@ -239,8 +246,9 @@ public class ShanMeta {
 	private static synchronized void saveCache(Map<UUID, CachedHead> dataToSave) {
 		try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(cacheFile))) {
 			oos.writeObject(dataToSave);
+			plugin.getLogger().info("已保存 " + dataToSave.size() + " 个头颅缓存到: " + cacheFile.getAbsolutePath());
 		} catch (IOException e) {
-			plugin.getLogger().log(Level.WARNING, "无法保存头颅缓存", e);
+			plugin.getLogger().log(Level.SEVERE, "无法保存头颅缓存到文件: " + cacheFile.getAbsolutePath(), e);
 		}
 	}
 	

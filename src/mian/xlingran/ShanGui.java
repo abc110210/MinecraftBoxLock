@@ -43,7 +43,7 @@ public class ShanGui {
 	private static final int RETURN_SLOT = 53;      // 返回按钮 (全局权限GUI使用)
 	
 	// 打开箱子管理GUI界面 (3行)
-	public static void openBoxManageGui(Player player, Block chestBlock, Map<String, UUID> chestOwners, Set<String> publicChests) {
+	public static void openBoxManageGui(Player player, Block chestBlock, Map<String, UUID> chestOwners, Set<String> publicChests, Set<String> hopperEnabledChests) {
 		Inventory gui = Bukkit.createInventory(null, GUI_ROWS * 9, BOX_MANAGE_TITLE);
 		
 		ItemStack blackGlass = createItem(Material.BLACK_STAINED_GLASS_PANE, " ");
@@ -75,10 +75,14 @@ public class ShanGui {
 		);
 		gui.setItem(14, chest);
 		
+		// 漏斗传输开关
+		boolean isHopperEnabled = hopperEnabledChests != null && hopperEnabledChests.contains(locationKey);
+		String hopperStatusColor = isHopperEnabled ? "§a开" : "§c关";
+		
 		ItemStack hopper = createItem(Material.HOPPER, "§b漏斗开关",
 			" ",
 			"§8§l- §6打开和关闭漏斗传输",
-			" "
+			"§e当前状态: " + hopperStatusColor
 		);
 		gui.setItem(16, hopper);
 		
@@ -419,7 +423,7 @@ public class ShanGui {
 	}
 	
 	// 箱子管理GUI点击
-	public static void handleBoxManageClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<String, Set<UUID>> chestPermissions, Map<UUID, Set<UUID>> globalPermissions, Set<String> publicChests) {
+	public static void handleBoxManageClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<String, Set<UUID>> chestPermissions, Map<UUID, Set<UUID>> globalPermissions, Set<String> publicChests, Set<String> hopperEnabledChests) {
 		switch (slot) {
 			case 10: 
 				openSinglePermissionGui(player, chestBlock, chestOwners);
@@ -439,18 +443,31 @@ public class ShanGui {
 				}
 				// 刷新GUI
 				Bukkit.getScheduler().runTaskLater(plugin, () -> {
-					openBoxManageGui(player, chestBlock, chestOwners, publicChests);
+					openBoxManageGui(player, chestBlock, chestOwners, publicChests, hopperEnabledChests);
 				}, 2L);
 				break;
 			}
-			case 16: 
-				player.sendMessage("§b§l§n漏斗开关");
+			case 16: {
+				// 切换漏斗传输状态
+				String locationKey = getLocationKey(chestBlock);
+				if (hopperEnabledChests.contains(locationKey)) {
+					hopperEnabledChests.remove(locationKey);
+					player.sendMessage("§a已 §c关闭 §a该箱子的漏斗传输");
+				} else {
+					hopperEnabledChests.add(locationKey);
+					player.sendMessage("§a已 §a开启 §a该箱子的漏斗传输");
+				}
+				// 刷新GUI
+				Bukkit.getScheduler().runTaskLater(plugin, () -> {
+					openBoxManageGui(player, chestBlock, chestOwners, publicChests, hopperEnabledChests);
+				}, 2L);
 				break;
+			}
 		}
 	}
 	
 	// 单独权限设置GUI点击
-	public static void handleSinglePermissionClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<String, Set<UUID>> chestPermissions, Set<String> publicChests) {
+	public static void handleSinglePermissionClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<String, Set<UUID>> chestPermissions, Set<String> publicChests, Set<String> hopperEnabledChests) {
 		switch (slot) {
 			case 11: 
 				openPermissionAddGui(player, chestBlock, chestOwners, chestPermissions);
@@ -459,13 +476,13 @@ public class ShanGui {
 				openPermissionRemoveGui(player, chestBlock, chestOwners, chestPermissions, 0);
 				break;
 			case 26: 
-				openBoxManageGui(player, chestBlock, chestOwners, publicChests);
+				openBoxManageGui(player, chestBlock, chestOwners, publicChests, hopperEnabledChests);
 				break;
 		}
 	}
 	
 	// 全局权限设置GUI点击
-	public static void handleGlobalPermissionClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Set<UUID>> globalPermissions, Set<String> publicChests) {
+	public static void handleGlobalPermissionClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Set<UUID>> globalPermissions, Set<String> publicChests, Set<String> hopperEnabledChests) {
 		switch (slot) {
 			case 11: 
 				openGlobalAddGui(player, chestBlock, chestOwners, globalPermissions);
@@ -474,7 +491,7 @@ public class ShanGui {
 				openGlobalRemoveGui(player, chestBlock, chestOwners, globalPermissions, 0);
 				break;
 			case 26: 
-				openBoxManageGui(player, chestBlock, chestOwners, publicChests);
+				openBoxManageGui(player, chestBlock, chestOwners, publicChests, hopperEnabledChests);
 				break;
 		}
 	}

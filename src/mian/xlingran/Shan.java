@@ -52,6 +52,7 @@ public class Shan extends JavaPlugin implements Listener {
 	private Map<String, Set<UUID>> chestPermissions = new HashMap<>();
 	private Map<UUID, Set<UUID>> globalPermissions = new HashMap<>();
 	private Set<String> publicChests = new HashSet<>(); // 公开的箱子（全服可打开但无法破坏）
+	private Set<String> hopperEnabledChests = new HashSet<>(); // 允许漏斗传输的箱子
 	private File dataFile;
 	
 	private Set<UUID> guiOpeningPlayers = new HashSet<>();
@@ -227,6 +228,7 @@ public class Shan extends JavaPlugin implements Listener {
 			chestOwners.remove(locationKey);
 			chestPermissions.remove(locationKey);
 			publicChests.remove(locationKey);
+			hopperEnabledChests.remove(locationKey);
 			saveChestData();
 		}
 	}
@@ -271,7 +273,14 @@ public class Shan extends JavaPlugin implements Listener {
 		}
 		
 		String locationKey = getLocationKey(block);
-		return chestOwners.containsKey(locationKey);
+		// 如果没有上锁，或者开启了漏斗传输，则允许传输
+		if (!chestOwners.containsKey(locationKey)) {
+			return false;
+		}
+		if (hopperEnabledChests.contains(locationKey)) {
+			return false;
+		}
+		return true;
 	}
 	
 		@EventHandler(priority = EventPriority.HIGHEST)
@@ -302,7 +311,7 @@ public class Shan extends JavaPlugin implements Listener {
 			Bukkit.getScheduler().runTaskLater(this, () -> {
 				Block cb = parseBlockLocation(player, loc);
 				if (cb != null) {
-					ShanGui.handleBoxManageClick(player, s, cb, chestOwners, chestPermissions, globalPermissions, publicChests);
+					ShanGui.handleBoxManageClick(player, s, cb, chestOwners, chestPermissions, globalPermissions, publicChests, hopperEnabledChests);
 				}
 			}, 2L);
 		}
@@ -412,7 +421,7 @@ public class Shan extends JavaPlugin implements Listener {
 			guiOpeningPlayers.remove(player.getUniqueId());
 		}, 1L);
 		
-		ShanGui.openBoxManageGui(player, chestBlock, chestOwners, publicChests);
+		ShanGui.openBoxManageGui(player, chestBlock, chestOwners, publicChests, hopperEnabledChests);
 	}
 	
 	// 字符串 Block
@@ -483,6 +492,11 @@ public class Shan extends JavaPlugin implements Listener {
 				writer.write("public:" + locationKey);
 				writer.newLine();
 			}
+			// 保存漏斗传输状态
+			for (String locationKey : hopperEnabledChests) {
+				writer.write("hopper:" + locationKey);
+				writer.newLine();
+			}
 		} catch (IOException e) {
 			getLogger().log(Level.SEVERE, "无法保存箱子数据", e);
 		}
@@ -521,11 +535,15 @@ public class Shan extends JavaPlugin implements Listener {
 							// 加载公开箱子数据
 							String locationKey = key.substring(7);
 							publicChests.add(locationKey);
+						} else if (key.startsWith("hopper:")) {
+							// 加载漏斗传输状态
+							String locationKey = key.substring(7);
+							hopperEnabledChests.add(locationKey);
 						}
 					}
 				}
 			}
-			getLogger().info("已加载 " + chestOwners.size() + " 个箱子的数据，" + globalPermissions.size() + " 个全局授权关系，" + publicChests.size() + " 个公开箱子");
+			getLogger().info("已加载 " + chestOwners.size() + " 个箱子的数据，" + globalPermissions.size() + " 个全局授权关系，" + publicChests.size() + " 个公开箱子，" + hopperEnabledChests.size() + " 个开启漏斗传输的箱子");
 		} catch (IOException e) {
 			getLogger().log(Level.SEVERE, "无法加载箱子数据", e);
 		}
