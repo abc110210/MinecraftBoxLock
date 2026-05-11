@@ -124,11 +124,15 @@ public class ShanGui {
 		gui.setItem(20, paper);
 		
 		// 管理面板按钮
-		ItemStack composter = createItem(Material.COMPOSTER, "§b管理面板",
+		ItemStack repeater = createItem(Material.REPEATER, "§b管理面板",
 			" ",
 			"§8§l- §6管理你的默认箱子设置"
 		);
-		gui.setItem(24, composter);
+		gui.setItem(22, repeater);
+		
+		// 待开发功能
+		ItemStack barrier = createItem(Material.BARRIER, "§c待开发");
+		gui.setItem(24, barrier);
 		
 		player.openInventory(gui);
 	}
@@ -558,7 +562,7 @@ public class ShanGui {
 				}
 				break;
 			}
-			case 24: {
+			case 22: {
 				// 管理面板按钮
 				openManagementPanelGui(player, chestBlock, chestOwners, playerDefaultPublicSettings);
 				break;
