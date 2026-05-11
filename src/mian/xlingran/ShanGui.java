@@ -1082,11 +1082,6 @@ public class ShanGui {
 		}
 	}
 	
-	// 判断是否管理面板GUI
-	public static boolean isManagementPanelGui(String title) {
-		return MANAGEMENT_PANEL_TITLE.equals(title);
-	}
-	
 	// 添加全局权限
 	public static boolean handleGlobalAddClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Set<UUID>> globalPermissions, Map<String, Set<UUID>> chestPermissions, Set<UUID> switchingGuiPlayers) {
 		// 检查点击冷却
