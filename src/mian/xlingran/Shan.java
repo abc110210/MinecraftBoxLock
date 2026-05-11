@@ -806,10 +806,11 @@ public class Shan extends JavaPlugin implements Listener {
 			saveChestData();
 			
 			// 关闭所有玩家打开的自定义GUI，防止重载后GUI失效
+			// 通过检查标题是否包含特定关键词来识别自定义GUI
 			for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
 				String invTitle = onlinePlayer.getOpenInventory().getTitle();
-				if (invTitle != null && (invTitle.contains("箱子管理") || invTitle.contains("权限设置") || 
-					invTitle.contains("取消权限") || invTitle.contains("全局权限") || invTitle.contains("管理面板"))) {
+				if (invTitle != null && (invTitle.contains("管理") || invTitle.contains("权限") || 
+					invTitle.contains("锁定") || invTitle.contains("漏斗") || invTitle.contains("密码"))) {
 					onlinePlayer.closeInventory();
 				}
 			}
