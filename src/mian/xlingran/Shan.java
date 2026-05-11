@@ -10,6 +10,7 @@ import org.bukkit.event.Listener;
 import org.bukkit.event.block.Action;
 import org.bukkit.event.block.BlockBreakEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.entity.EntityExplodeEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.inventory.InventoryMoveItemEvent;
@@ -105,7 +106,7 @@ public class Shan extends JavaPlugin implements Listener {
 		loadChestData();
 		
 		// 使用 Logger 输出，去掉 § 颜色代码避免 CMD 编码冲突
-		getLogger().info("欢迎使用 箱子锁 插件,交流群: 943446220");
+		getLogger().info("§a欢迎使用 §b箱子锁 §a插件,交流群: 943446220");
 	}
 	
 	@Override
@@ -113,7 +114,7 @@ public class Shan extends JavaPlugin implements Listener {
 		// 保存
 		saveChestData();
 		// 使用 Logger 输出，去掉 § 颜色代码避免 CMD 编码冲突
-		getLogger().info("箱子锁插件已关闭，交流群: 943446220");
+		getLogger().info("§c箱子锁插件已卸载，交流群: 943446220");
 	}
 	
 	/**
@@ -363,6 +364,31 @@ public class Shan extends JavaPlugin implements Listener {
 			event.setCancelled(true);
 			openGui(player, block);
 		}
+	}
+	
+	// 监听爆炸事件，防止被上锁的容器被爆炸破坏
+	@EventHandler(priority = EventPriority.HIGHEST)
+	public void onEntityExplode(EntityExplodeEvent event) {
+		if (event.isCancelled()) {
+			return;
+		}
+		
+		// 遍历所有被爆炸影响的方块
+		event.blockList().removeIf(block -> {
+			if (!isChest(block.getType())) {
+				return false;
+			}
+			
+			String locationKey = getLocationKey(block);
+			UUID ownerUUID = chestOwners.get(locationKey);
+			
+			// 如果容器有所有者（包括公开和私有），则保护不被爆炸破坏
+			if (ownerUUID != null) {
+				return true; // 从爆炸列表中移除，保护该方块
+			}
+			
+			return false;
+		});
 	}
 	
 	// 破坏事件
@@ -661,7 +687,8 @@ public class Shan extends JavaPlugin implements Listener {
 		       material == Material.DISPENSER ||         // 发射器
 		       material == Material.DROPPER ||           // 投掷器
 		       material == Material.CRAFTING_TABLE ||    // 合成台
-		       material == Material.LOOM;                // 织布机
+		       material == Material.LOOM ||              // 织布机
+		       material == Material.CRAFTER;             // 合成器
 	}
 	
 	//箱子位置

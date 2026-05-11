@@ -707,6 +707,12 @@ public class ShanGui {
 			if (playerIndex < playersWithoutGlobalPermission.size()) {
 				Player targetPlayer = playersWithoutGlobalPermission.get(playerIndex);
 				ItemStack playerHead = createPermissionPlayerHead(targetPlayer, "§e");
+				// 添加 Lore
+				ItemMeta meta = playerHead.getItemMeta();
+				if (meta != null) {
+					meta.setLore(Arrays.asList(" ", "§a点击添加全局授权"));
+					playerHead.setItemMeta(meta);
+				}
 				gui.setItem(slot, playerHead);
 				playerIndex++;
 			}
@@ -750,6 +756,12 @@ public class ShanGui {
 			if (slotIndex < innerSlots.size()) {
 				OfflinePlayer targetPlayer = playersWithGlobalPermission.get(i);
 				ItemStack playerHead = createPermissionPlayerHead(targetPlayer, "§c");
+				// 添加 Lore
+				ItemMeta meta = playerHead.getItemMeta();
+				if (meta != null) {
+					meta.setLore(Arrays.asList(" ", "§c取消该玩家全局授权"));
+					playerHead.setItemMeta(meta);
+				}
 				gui.setItem(innerSlots.get(slotIndex), playerHead);
 				slotIndex++;
 			}
@@ -859,6 +871,12 @@ public class ShanGui {
 			if (slotIndex < innerSlots.size()) {
 				OfflinePlayer targetPlayer = playersWithPermission.get(i);
 				ItemStack playerHead = createPermissionPlayerHead(targetPlayer, "§c");
+				// 添加 Lore
+				ItemMeta meta = playerHead.getItemMeta();
+				if (meta != null) {
+					meta.setLore(Arrays.asList(" ", "§c点击取消该玩家权限"));
+					playerHead.setItemMeta(meta);
+				}
 				gui.setItem(innerSlots.get(slotIndex), playerHead);
 				slotIndex++;
 			}
