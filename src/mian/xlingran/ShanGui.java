@@ -148,7 +148,7 @@ public class ShanGui {
 	 * 默认箱子管理GUI（硬编码后备方案）
 	 */
 	private static void openBoxManageGuiDefault(Player player, Block chestBlock, Map<String, UUID> chestOwners, Set<String> publicChests, Set<String> hopperEnabledChests, Map<String, String> chestPasswords) {
-		Inventory gui = Bukkit.createInventory(null, GUI_ROWS * 9, BOX_MANAGE_TITLE);
+		Inventory gui = Bukkit.createInventory(null, GUI_ROWS * 9, "§d容器管理");
 		
 		ItemStack blackGlass = createItem(Material.BLACK_STAINED_GLASS_PANE, " ");
 		for (int i = 0; i < 27; i++) {
@@ -156,12 +156,22 @@ public class ShanGui {
 		}
 		
 		ItemStack ownerHead = createPlayerHead(chestBlock, chestOwners);
+		ItemMeta ownerMeta = ownerHead.getItemMeta();
+		if (ownerMeta != null) {
+			ownerMeta.setDisplayName("§b独立权限");
+			List<String> ownerLore = new ArrayList<>();
+			ownerLore.add("");
+			ownerLore.add("§8&l- §6授权的玩家可以打开这个箱子");
+			ownerLore.add("§8&l- §6对单箱子的设置");
+			ownerMeta.setLore(ownerLore);
+			ownerHead.setItemMeta(ownerMeta);
+		}
 		gui.setItem(10, ownerHead);
 		
 		ItemStack wheat = createItem(Material.WHEAT, "§b全局权限设置",
-			" ",
-			"§8§l- §6有权限的玩家可以打开你所有的箱子",
-			"§8§l- §6对你箱子所有权限设置"
+			"",
+			"§8&l- §6授权玩家可以打开你所有的箱子",
+			"§8&l- §6对所有箱子设置"
 		);
 		gui.setItem(12, wheat);
 		
@@ -169,43 +179,53 @@ public class ShanGui {
 		boolean isPublic = publicChests != null && publicChests.contains(locationKey);
 		String statusColor = isPublic ? "§a公开" : "§c私有";
 		
-		ItemStack chest = createItem(Material.CHEST, "§9锁定开关",
-			" ",
-			"§8§l- §6在这里切换你的箱子状态",
-			"§b私有 §8§l- §6拥有权限的玩家才能打开",
-			"§b公开 §8§l- §6所有的玩家都可以打开你的箱子",
-			"§e当前状态: " + statusColor
+		ItemStack chest = createItem(Material.CHEST, "§b锁定开关",
+			"",
+			"§3私有 §8&l- §6拥有权限的玩家才能打开",
+			"§3公开 §8&l- §6所有的玩家都可以打开你的箱子",
+			"§8&l- §6点击切换你的箱子状态",
+			"§8&l- §6箱子公开后只能打开，不能破坏",
+			"",
+			"§9当前状态: " + statusColor
 		);
 		gui.setItem(14, chest);
 		
 		boolean isHopperEnabled = hopperEnabledChests != null && hopperEnabledChests.contains(locationKey);
-		String hopperStatusColor = isHopperEnabled ? "§a开" : "§c关";
+		String hopperStatusColor = isHopperEnabled ? "§a打开" : "§c关闭";
 		
 		ItemStack hopper = createItem(Material.HOPPER, "§b漏斗开关",
-			" ",
-			"§8§l- §6打开和关闭漏斗传输",
-			"§e当前状态: " + hopperStatusColor
+			"",
+			"§8&l- §6打开和关闭漏斗传输",
+			"§8&l- §6点击切换开关",
+			"",
+			"§9当前状态: " + hopperStatusColor
 		);
 		gui.setItem(16, hopper);
 		
 		boolean hasPassword = chestPasswords != null && chestPasswords.containsKey(locationKey);
 		String passwordStatus = hasPassword ? "§a已设置" : "§c未设置";
 		
-		ItemStack paper = createItem(Material.PAPER, "§3密码箱",
-			" ",
-			"§8§l- §6为箱子设置密码保护",
-			"§8§l- §6设置后所有玩家都需要输入密码才能打开",
-			"§e当前状态: " + passwordStatus
+		ItemStack paper = createItem(Material.PAPER, "§b密码箱",
+			"",
+			"§8&l- §6为箱子设置密码保护",
+			"§8&l- §6设置后有密码的玩家可以打开",
+			"§8&l- §6会绕过授权",
+			"",
+			"§9当前状态: " + passwordStatus
 		);
 		gui.setItem(20, paper);
 		
 		ItemStack repeater = createItem(Material.REPEATER, "§b管理面板",
-			" ",
-			"§8§l- §6管理你的默认箱子设置"
+			"",
+			"§8&l- §6管理容器默认设置",
+			"§8&l- §6新放置的箱子将按照设置的模式",
+			"§8&l- §6默认都是 §c关闭 §6的"
 		);
 		gui.setItem(22, repeater);
 		
-		ItemStack barrier = createItem(Material.BARRIER, "§c待开发");
+		ItemStack barrier = createItem(Material.BARRIER, "§b待开发",
+			"§8目前未开放"
+		);
 		gui.setItem(24, barrier);
 		
 		player.openInventory(gui);
@@ -356,7 +376,7 @@ public class ShanGui {
 	 * 默认管理面板GUI（硬编码后备方案）
 	 */
 	private static void openManagementPanelGuiDefault(Player player, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Boolean> playerDefaultPublicSettings, Map<UUID, Boolean> playerDefaultHopperSettings) {
-		Inventory gui = Bukkit.createInventory(null, MANAGEMENT_PANEL_ROWS * 9, MANAGEMENT_PANEL_TITLE);
+		Inventory gui = Bukkit.createInventory(null, MANAGEMENT_PANEL_ROWS * 9, "§b管理面板");
 		
 		ItemStack blackGlass = createItem(Material.BLACK_STAINED_GLASS_PANE, " ");
 		for (int i = 0; i < 9; i++) {
@@ -368,11 +388,12 @@ public class ShanGui {
 		boolean isDefaultPublic = playerDefaultPublicSettings.getOrDefault(ownerUUID, false);
 		String defaultStatus = isDefaultPublic ? "§a公开" : "§c私有";
 		
-		ItemStack book = createItem(Material.BOOK, "§b默认公开/私有设置",
-			" ",
-			"§3私有§8§l- §6你新放置的箱子默认为私有",
-			"§3公开§8§l- §6你新放置的箱子默认为公开",
-			"§e当前默认状态: " + defaultStatus
+		ItemStack book = createItem(Material.BOOK, "§b默认 §e公开/私有 §b设置",
+			"",
+			"§3私有 §8&l- §6你新放置的箱子默认为私有",
+			"§3公开 §8&l- §6你新放置的箱子默认为公开",
+			"",
+			"§9当前默认状态: " + defaultStatus
 		);
 		gui.setItem(1, book);
 		
@@ -380,17 +401,21 @@ public class ShanGui {
 		boolean isDefaultHopper = playerDefaultHopperSettings.getOrDefault(ownerUUID, false);
 		String hopperStatus = isDefaultHopper ? "§a打开" : "§c关闭";
 		
-		ItemStack hopper = createItem(Material.HOPPER, "§a默认漏斗设置",
-			" ",
-			"§8§l- §6默认漏斗开关",
-			"§8§l打开- §6新放置容器默认打开漏斗传输",
-			"§8§l关闭- §6新放置容器默认关闭漏斗传输",
+		ItemStack hopper = createItem(Material.HOPPER, "§b默认 §e漏斗开关 §b设置",
+			"",
+			"§3打开 §8&l- §6新放置的容器默认打开漏斗传输",
+			"§3关闭 §8&l- §6新放置的容器默认关闭漏斗传输",
+			"§8&l- §6默认漏斗开关",
+			"",
 			"§e当前状态: " + hopperStatus
 		);
 		gui.setItem(2, hopper);
 		
 		// 返回按钮 (最后格子，索引为8)
-		ItemStack returnButton = createItem(Material.WHITE_STAINED_GLASS_PANE, "§8返回");
+		ItemStack returnButton = createItem(Material.WHITE_STAINED_GLASS_PANE, "§f返回",
+			"",
+			"§8点击返回上一级菜单"
+		);
 		gui.setItem(8, returnButton);
 		
 		player.openInventory(gui);
@@ -472,20 +497,31 @@ public class ShanGui {
 	 * 默认单独权限设置GUI（硬编码后备方案）
 	 */
 	private static void openSinglePermissionGuiDefault(Player player, Block chestBlock, Map<String, UUID> chestOwners) {
-		Inventory gui = Bukkit.createInventory(null, SINGLE_ROWS * 9, SINGLE_PERMISSION_TITLE);
+		Inventory gui = Bukkit.createInventory(null, SINGLE_ROWS * 9, "§b独立权限设置");
 		
 		ItemStack blackGlass = createItem(Material.BLACK_STAINED_GLASS_PANE, " ");
 		for (int i = 0; i < 27; i++) {
 			gui.setItem(i, blackGlass);
 		}
 		
-		ItemStack nameTag = createItem(Material.NAME_TAG, "§a设置权限");
+		ItemStack nameTag = createItem(Material.NAME_TAG, "§a设置权限",
+			"",
+			"§8&l- §6对单个箱子的权限添加",
+			"§8&l- §6点击玩家头颅后可添加权限"
+		);
 		gui.setItem(11, nameTag);
 		
-		ItemStack beacon = createItem(Material.BEACON, "§c取消权限");
+		ItemStack beacon = createItem(Material.BEACON, "§c取消权限",
+			"",
+			"§8&l- §6对单个箱子的权限移除",
+			"§8&l- §6点击玩家头颅后可移除权限"
+		);
 		gui.setItem(15, beacon);
 		
-		ItemStack returnButton = createItem(Material.WHITE_STAINED_GLASS_PANE, "§8返回");
+		ItemStack returnButton = createItem(Material.WHITE_STAINED_GLASS_PANE, "§f返回",
+			"",
+			"§8返回上一级菜单"
+		);
 		gui.setItem(26, returnButton);
 		
 		player.openInventory(gui);
@@ -551,20 +587,34 @@ public class ShanGui {
 	 * 默认全局权限设置GUI（硬编码后备方案）
 	 */
 	private static void openGlobalPermissionGuiDefault(Player player, Block chestBlock, Map<String, UUID> chestOwners) {
-		Inventory gui = Bukkit.createInventory(null, GLOBAL_ROWS * 9, GLOBAL_PERMISSION_TITLE);
+		Inventory gui = Bukkit.createInventory(null, GLOBAL_ROWS * 9, "§b全局权限设置");
 		
 		ItemStack blackGlass = createItem(Material.BLACK_STAINED_GLASS_PANE, " ");
 		for (int i = 0; i < 27; i++) {
 			gui.setItem(i, blackGlass);
 		}
 		
-		ItemStack boneMeal = createItem(Material.BONE_MEAL, "§a添加全局权限");
-		gui.setItem(11, boneMeal);
+		ItemStack nameTag = createItem(Material.NAME_TAG, "§a添加全局权限",
+			"",
+			"§8&l- §6授权玩家可以打开你所有箱子",
+			"§8&l- §6但是依旧可以在单个箱子取消权限",
+			"§8&l- §6之后放置的也会自动授权权限",
+			"§8&l- §6点击玩家头颅添加授权权限"
+		);
+		gui.setItem(11, nameTag);
 		
-		ItemStack feather = createItem(Material.FEATHER, "§c删除全局权限");
-		gui.setItem(15, feather);
+		ItemStack beacon = createItem(Material.BEACON, "§c删除全局权限",
+			"",
+			"§8&l- §6移除玩家打开你所有箱子权限",
+			"§8&l- §6会移除之前单独授权的权限",
+			"§8&l- §6点击玩家头颅后会移除权限"
+		);
+		gui.setItem(15, beacon);
 		
-		ItemStack returnButton = createItem(Material.WHITE_STAINED_GLASS_PANE, "§8返回");
+		ItemStack returnButton = createItem(Material.WHITE_STAINED_GLASS_PANE, "§f返回",
+			"",
+			"§8返回上一级菜单"
+		);
 		gui.setItem(26, returnButton);
 		
 		player.openInventory(gui);
@@ -756,6 +806,15 @@ public class ShanGui {
 			if (playerIndex < playersWithoutPermission.size()) {
 				Player targetPlayer = playersWithoutPermission.get(playerIndex);
 				ItemStack playerHead = createPermissionPlayerHead(targetPlayer, "§6");
+				// 添加 Lore
+				ItemMeta meta = playerHead.getItemMeta();
+				if (meta != null) {
+					List<String> lore = new ArrayList<>();
+					lore.add(" ");
+					lore.add("§a点击添加独立权限");
+					meta.setLore(lore);
+					playerHead.setItemMeta(meta);
+				}
 				gui.setItem(slot, playerHead);
 				playerIndex++;
 			}

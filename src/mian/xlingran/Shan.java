@@ -78,6 +78,7 @@ public class Shan extends JavaPlugin implements Listener {
 		instance = this;
 		ShanGui.setPlugin(this);
 		ShanMeta.init(this); // 初始化头颅缓存系统
+		MessageUtil.init(this); // 初始化消息系统
 		Bukkit.getPluginManager().registerEvents(this, this);
 		
 		// 注册指令
@@ -89,8 +90,9 @@ public class Shan extends JavaPlugin implements Listener {
 			getDataFolder().mkdirs();
 		}
 		
-		// 释放 Gui.yml 文件到插件目录
+		// 释放配置文件到插件目录
 		saveResource("Gui.yml", false);
+		saveResource("Message.yml", false);
 		
 		// 加载GUI配置
 		ShanGui.loadGuiConfig(this);
@@ -159,14 +161,14 @@ public class Shan extends JavaPlugin implements Listener {
 		if (message.equalsIgnoreCase("quit")) {
 			waitingForPasswordSet.remove(player.getUniqueId());
 			playerPendingPasswordChests.remove(player.getUniqueId());
-			player.sendMessage("§a已取消设置密码");
+			MessageUtil.sendMessage(player, "PasswordBoxSetFailed");
 			return;
 		}
 
 		// 验证密码格式：4~8 位，仅英文和数字
 		if (!message.matches("[a-zA-Z0-9]{4,8}")) {
-			player.sendMessage("§c密码长度必须在 4~8 位之间，且仅支持英文和数字，请重新输入");
-			player.sendMessage("§a输入 §equit §a取消设置");
+			MessageUtil.sendMessage(player, "PasswordBoxLengthErro");
+			MessageUtil.sendMessage(player, "PasswordBoxSet");
 			return;
 		}
 
@@ -175,7 +177,7 @@ public class Shan extends JavaPlugin implements Listener {
 		saveChestData();
 		waitingForPasswordSet.remove(player.getUniqueId());
 		playerPendingPasswordChests.remove(player.getUniqueId());
-		player.sendMessage("§a密码箱设置成功！");
+		MessageUtil.sendMessage(player, "PasswordBoxSetSaved");
 
 		// 刷新 GUI (异步事件需切回主线程)
 		Bukkit.getScheduler().runTask(this, () -> {
@@ -206,7 +208,7 @@ public class Shan extends JavaPlugin implements Listener {
 		if (message.equalsIgnoreCase("quit")) {
 			waitingForPasswordOpen.remove(player.getUniqueId());
 			playerPendingPasswordChests.remove(player.getUniqueId());
-			player.sendMessage("§a已取消打开箱子");
+			MessageUtil.sendMessage(player, "PasswordBoxCancelOpen");
 			return;
 		}
 
@@ -217,9 +219,9 @@ public class Shan extends JavaPlugin implements Listener {
 			verifiedPasswordChests.put(player.getUniqueId(), new AbstractMap.SimpleEntry<>(chestLocation, correctPassword));
 			waitingForPasswordOpen.remove(player.getUniqueId());
 			playerPendingPasswordChests.remove(player.getUniqueId());
-			player.sendMessage("§a密码正确，请再次右键点击箱子打开");
+			MessageUtil.sendMessage(player, "PasswordBoxCorrect");
 		} else {
-			player.sendMessage("§c密码错误，请重新输入（输入 quit 取消打开）");
+			MessageUtil.sendMessage(player, "PasswordBoxErro");
 		}
 	}
 
@@ -253,9 +255,9 @@ public class Shan extends JavaPlugin implements Listener {
 			if (defaultPublic != null && defaultPublic) {
 				// 如果玩家设置为默认公开，则新箱子自动设为公开
 				publicChests.add(locationKey);
-				player.sendMessage("§a你放置了一个公开未上锁的箱子");
+				MessageUtil.sendMessage(player, "PlacePubBox");
 			} else {
-				player.sendMessage("§a你放置了一个私有的箱子");
+				MessageUtil.sendMessage(player, "PlacePriBox");
 			}
 			
 			// 应用玩家的默认漏斗传输设置
@@ -319,9 +321,9 @@ public class Shan extends JavaPlugin implements Listener {
 							
 			// 判断是否是密码修改后的第一次打开
 			if (isPasswordModified) {
-				player.sendMessage("§c密码已被修改，请重新输入密码（输入 quit 取消打开）");
+				MessageUtil.sendMessage(player, "PasswordBoxChange");
 			} else {
-				player.sendMessage("§c该箱子已启用密码保护，请在聊天栏输入密码（输入 quit 取消打开）");
+				MessageUtil.sendMessage(player, "PasswordBoxOpen");
 			}
 					
 			// 进入等待输入密码状态（路人打开箱子）
@@ -333,7 +335,7 @@ public class Shan extends JavaPlugin implements Listener {
 		// 非密码箱，走原有权限检查逻辑
 		if (!hasChestPermission(locationKey, player)) {
 			event.setCancelled(true);
-			player.sendMessage("§c这个箱子已被锁定，您无法打开！");
+			MessageUtil.sendMessage(player, "LockBox");
 		}
 	}
 
@@ -385,14 +387,14 @@ public class Shan extends JavaPlugin implements Listener {
 			// 公开箱子：只有所有者可以破坏
 			if (publicChests.contains(locationKey) && !ownerUUID.equals(player.getUniqueId())) {
 				event.setCancelled(true);
-				player.sendMessage("§c这个箱子是公开的，您无法破坏！");
+				MessageUtil.sendMessage(player, "PrivateBreak");
 				return;
 			}
 			
 			// 私有箱子：无权限的玩家无法破坏
 			if (!hasChestPermission(locationKey, player)) {
 				event.setCancelled(true);
-				player.sendMessage("§c这个箱子已被锁定，您无法破坏！");
+				MessageUtil.sendMessage(player, "LockBreak");
 				return;
 			}
 			
@@ -798,7 +800,7 @@ public class Shan extends JavaPlugin implements Listener {
 		if (label.equalsIgnoreCase("xlr") && args.length == 1 && args[0].equalsIgnoreCase("reload")) {
 			// 检查权限（OP 或有权限节点）
 			if (!player.hasPermission("xlr.reload") && !player.isOp()) {
-				player.sendMessage("§c你没有权限执行此命令！");
+				MessageUtil.sendMessage(player, "CommandNoPermission");
 				return true;
 			}
 			
@@ -827,24 +829,26 @@ public class Shan extends JavaPlugin implements Listener {
 			
 			// 重新加载GUI配置
 			ShanGui.loadGuiConfig(this);
+			// 重新加载消息配置
+			MessageUtil.reloadMessages();
 			
 			// 重新加载数据
 			loadChestData();
 			
-			player.sendMessage("§a插件数据已重载！");
+			MessageUtil.sendMessage(player, "CommandReloadSuccess");
 			return true;
 		}
 		
 		if (args.length != 1) {
 			if (label.equalsIgnoreCase("xlr")) {
-				player.sendMessage("§c用法: /xlr <玩家名称>");
-				player.sendMessage("§c将您所有的箱子权限授予指定玩家（包括新箱子）");
+				MessageUtil.sendMessage(player, "CommandUsageXlr");
+				MessageUtil.sendMessage(player, "CommandUsageXlrDesc");
 			} else if (label.equalsIgnoreCase("xlrdel")) {
-				player.sendMessage("§c用法: /xlrdel <玩家名称>");
-				player.sendMessage("§c取消指定玩家对您所有箱子的权限");
+				MessageUtil.sendMessage(player, "CommandUsageXlrdel");
+				MessageUtil.sendMessage(player, "CommandUsageXlrdelDesc");
 			} else if (label.equalsIgnoreCase("xlr") && args.length > 0) {
 				// 如果参数存在但不是 reload（前面已处理）
-				player.sendMessage("§c用法: /xlr <玩家名称>");
+				MessageUtil.sendMessage(player, "CommandUsageXlr");
 			}
 			return true;
 		}
@@ -853,13 +857,14 @@ public class Shan extends JavaPlugin implements Listener {
 		OfflinePlayer targetPlayer = Bukkit.getOfflinePlayer(targetName);
 		
 		if (targetPlayer == null || !targetPlayer.hasPlayedBefore()) {
-			player.sendMessage("§c未找到玩家: §6" + targetName);
+			Map<String, String> vars = Map.of("player", targetName);
+			MessageUtil.sendMessage(player, "CommandPlayerNotFound", vars);
 			return true;
 		}
 		
 		UUID targetUUID = targetPlayer.getUniqueId();
 		if (targetUUID.equals(player.getUniqueId())) {
-			player.sendMessage("§c不能对自己操作！");
+			MessageUtil.sendMessage(player, "CommandSelfTarget");
 			return true;
 		}
 		
@@ -868,7 +873,8 @@ public class Shan extends JavaPlugin implements Listener {
 			Set<UUID> authorizedPlayers = globalPermissions.computeIfAbsent(player.getUniqueId(), k -> new HashSet<>());
 			
 			if (authorizedPlayers.contains(targetUUID)) {
-				player.sendMessage("§c玩家 §6" + targetPlayer.getName() + " §c已经被授权了！");
+				Map<String, String> vars = Map.of("player", targetPlayer.getName());
+				MessageUtil.sendMessage(player, "CommandAlreadyAuthorized", vars);
 				return true;
 			}
 			
@@ -884,14 +890,16 @@ public class Shan extends JavaPlugin implements Listener {
 			}
 			
 			saveChestData();
-			player.sendMessage("§a已成功将您所有箱子的权限授予玩家 §6" + targetPlayer.getName());
+			Map<String, String> vars = Map.of("player", targetPlayer.getName());
+			MessageUtil.sendMessage(player, "CommandGlobalAddSuccess", vars);
 			
 		} else if (label.equalsIgnoreCase("xlrdel")) {
 			// 删除全局授权
 			Set<UUID> authorizedPlayers = globalPermissions.get(player.getUniqueId());
 			
 			if (authorizedPlayers == null || !authorizedPlayers.contains(targetUUID)) {
-				player.sendMessage("§c玩家 §6" + targetPlayer.getName() + " §c没有被全局授权！");
+				Map<String, String> vars = Map.of("player", targetPlayer.getName());
+				MessageUtil.sendMessage(player, "CommandNotGlobalAuthorized", vars);
 				return true;
 			}
 			
@@ -921,7 +929,8 @@ public class Shan extends JavaPlugin implements Listener {
 			}
 			
 			saveChestData();
-			player.sendMessage("§a已取消玩家 §6" + targetPlayer.getName() + " §a对您所有箱子的权限");
+			Map<String, String> vars = Map.of("player", targetPlayer.getName());
+			MessageUtil.sendMessage(player, "CommandGlobalRemoveSuccess", vars);
 		}
 		
 		return true;

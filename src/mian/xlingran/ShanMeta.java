@@ -176,7 +176,7 @@ public class ShanMeta {
 				String textureValue = extractTextureValue(profile, player.getName());
 				
 				if (textureValue == null) {
-					plugin.getLogger().info("[头颅缓存] 玩家 " + player.getName() + " 纹理数据尚未加载或请求被拒绝(429)，跳过等待下次");
+					// plugin.getLogger().info("[头颅缓存] 玩家 " + player.getName() + " 纹理数据尚未加载或请求被拒绝(429)，跳过等待下次");
 					continue;
 				}
 				
@@ -188,9 +188,9 @@ public class ShanMeta {
 				);
 				headCache.put(playerUUID, newCache);
 				saveCache(headCache);
-				plugin.getLogger().info("[头颅缓存] 成功缓存: " + player.getName() + " (纹理长度: " + textureValue.length() + ")");
+				// plugin.getLogger().info("[头颅缓存] 成功缓存: " + player.getName() + " (纹理长度: " + textureValue.length() + ")");
 			} catch (Exception e) {
-				plugin.getLogger().log(Level.WARNING, "[头颅缓存] 缓存失败: " + player.getName(), e);
+				// plugin.getLogger().log(Level.WARNING, "[头颅缓存] 缓存失败: " + player.getName(), e);
 			}
 			
 			// 每次只缓存一个
@@ -204,7 +204,7 @@ public class ShanMeta {
 	private static String extractTextureValue(org.bukkit.profile.PlayerProfile profile, String debugName) {
 		try {
 			if (profile == null) {
-				plugin.getLogger().info("[头颅缓存] 提取纹理失败: " + debugName + " 资料为空");
+				// plugin.getLogger().info("[头颅缓存] 提取纹理失败: " + debugName + " 资料为空");
 				return null;
 			}
 			org.bukkit.profile.PlayerTextures textures = profile.getTextures();
@@ -215,9 +215,9 @@ public class ShanMeta {
 					return urlStr.substring(urlStr.indexOf("base64,") + 7);
 				}
 			}
-			plugin.getLogger().info("[头颅缓存] 提取纹理失败: " + debugName + " 皮肤 URL 未包含 base64 数据");
+			// plugin.getLogger().info("[头颅缓存] 提取纹理失败: " + debugName + " 皮肤 URL 未包含 base64 数据");
 		} catch (Exception e) {
-			plugin.getLogger().log(Level.WARNING, "[头颅缓存] 提取纹理异常: " + debugName, e);
+			// plugin.getLogger().log(Level.WARNING, "[头颅缓存] 提取纹理异常: " + debugName, e);
 		}
 		return null;
 	}

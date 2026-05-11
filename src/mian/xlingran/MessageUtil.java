@@ -1,10 +1,91 @@
 package mian.xlingran;
 
+import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Player;
+import org.bukkit.plugin.Plugin;
+
+import java.io.File;
+import java.util.HashMap;
+import java.util.Map;
+
 /**
  * 消息工具类
- * 用于处理Windows控制台乱码问题
+ * 用于管理插件所有消息并处理Windows控制台乱码问题
  */
 public class MessageUtil {
+	
+	private static Plugin plugin;
+	private static YamlConfiguration messageConfig;
+	
+	// 消息缓存
+	private static final Map<String, String> messageCache = new HashMap<>();
+	
+	/**
+	 * 初始化消息系统
+	 */
+	public static void init(Plugin p) {
+		plugin = p;
+		loadMessages();
+	}
+	
+	/**
+	 * 加载消息配置
+	 */
+	public static void loadMessages() {
+		File messageFile = new File(plugin.getDataFolder(), "Message.yml");
+		if (messageFile.exists()) {
+			messageConfig = YamlConfiguration.loadConfiguration(messageFile);
+			messageCache.clear();
+			// 缓存所有消息
+			for (String key : messageConfig.getKeys(false)) {
+				messageCache.put(key, messageConfig.getString(key, ""));
+			}
+		}
+	}
+	
+	/**
+	 * 重载消息配置
+	 */
+	public static void reloadMessages() {
+		loadMessages();
+	}
+	
+	/**
+	 * 获取消息（带变量替换）
+	 * @param key 消息键
+	 * @param variables 变量映射，如 Map.of("player", playerName)
+	 * @return 处理后的消息
+	 */
+	public static String getMessage(String key, Map<String, String> variables) {
+		String message = messageCache.getOrDefault(key, "&c消息未找到: " + key);
+		if (variables != null) {
+			for (Map.Entry<String, String> entry : variables.entrySet()) {
+				message = message.replace("{" + entry.getKey() + "}", entry.getValue());
+			}
+		}
+		return message.replace('&', '§');
+	}
+	
+	/**
+	 * 获取消息（无变量）
+	 */
+	public static String getMessage(String key) {
+		return getMessage(key, null);
+	}
+	
+	/**
+	 * 发送消息给玩家
+	 */
+	public static void sendMessage(Player player, String key) {
+		player.sendMessage(getMessage(key));
+	}
+	
+	/**
+	 * 发送消息给玩家（带变量）
+	 */
+	public static void sendMessage(Player player, String key, Map<String, String> variables) {
+		player.sendMessage(getMessage(key, variables));
+	}
 	
 	/**
 	 * 发送控制台消息（兼容Windows）
