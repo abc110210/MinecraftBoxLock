@@ -326,7 +326,7 @@ public class Shan extends JavaPlugin implements Listener {
 			Bukkit.getScheduler().runTaskLater(this, () -> {
 				Block cb = parseBlockLocation(player, loc);
 				if (cb != null) {
-					ShanGui.handleSinglePermissionClick(player, s, cb, chestOwners, chestPermissions, publicChests, hopperEnabledChests);
+					ShanGui.handleSinglePermissionClick(player, s, cb, chestOwners, chestPermissions, publicChests, hopperEnabledChests, chestPasswords);
 				}
 			}, 2L);
 		}
@@ -338,7 +338,7 @@ public class Shan extends JavaPlugin implements Listener {
 			Bukkit.getScheduler().runTaskLater(this, () -> {
 				Block cb = parseBlockLocation(player, loc);
 				if (cb != null) {
-					ShanGui.handleGlobalPermissionClick(player, s, cb, chestOwners, globalPermissions, publicChests, hopperEnabledChests);
+					ShanGui.handleGlobalPermissionClick(player, s, cb, chestOwners, globalPermissions, publicChests, hopperEnabledChests, chestPasswords);
 				}
 			}, 2L);
 		}
