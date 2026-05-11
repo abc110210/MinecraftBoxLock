@@ -138,7 +138,7 @@ public class ShanGui {
 	}
 	
 	// 打开管理面板GUI (1行)
-	public static void openManagementPanelGui(Player player, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Boolean> playerDefaultPublicSettings) {
+	public static void openManagementPanelGui(Player player, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Boolean> playerDefaultPublicSettings, Map<UUID, Boolean> playerDefaultHopperSettings) {
 		Inventory gui = Bukkit.createInventory(null, MANAGEMENT_PANEL_ROWS * 9, MANAGEMENT_PANEL_TITLE);
 		
 		ItemStack blackGlass = createItem(Material.BLACK_STAINED_GLASS_PANE, " ");
@@ -158,6 +158,19 @@ public class ShanGui {
 			"§e当前默认状态: " + defaultStatus
 		);
 		gui.setItem(1, book);
+		
+		// 默认漏斗设置按钮 (第3格，索引为2)
+		boolean isDefaultHopper = playerDefaultHopperSettings.getOrDefault(ownerUUID, false);
+		String hopperStatus = isDefaultHopper ? "§a打开" : "§c关闭";
+		
+		ItemStack hopper = createItem(Material.HOPPER, "§a默认漏斗设置",
+			" ",
+			"§8§l- §6默认漏斗开关",
+			"§8§l打开- §6新放置容器默认打开漏斗传输",
+			"§8§l关闭- §6新放置容器默认关闭漏斗传输",
+			"§e当前状态: " + hopperStatus
+		);
+		gui.setItem(2, hopper);
 		
 		player.openInventory(gui);
 	}
@@ -496,7 +509,7 @@ public class ShanGui {
 	}
 	
 	// 箱子管理GUI点击
-	public static void handleBoxManageClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<String, Set<UUID>> chestPermissions, Map<UUID, Set<UUID>> globalPermissions, Set<String> publicChests, Set<String> hopperEnabledChests, Map<String, String> chestPasswords, Map<UUID, Boolean> playerDefaultPublicSettings) {
+	public static void handleBoxManageClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<String, Set<UUID>> chestPermissions, Map<UUID, Set<UUID>> globalPermissions, Set<String> publicChests, Set<String> hopperEnabledChests, Map<String, String> chestPasswords, Map<UUID, Boolean> playerDefaultPublicSettings, Map<UUID, Boolean> playerDefaultHopperSettings) {
 		// 检查点击冷却
 		if (isOnCooldown(player)) {
 			return; // 在冷却中，忽略点击
@@ -564,28 +577,40 @@ public class ShanGui {
 			}
 			case 22: {
 				// 管理面板按钮
-				openManagementPanelGui(player, chestBlock, chestOwners, playerDefaultPublicSettings);
+				openManagementPanelGui(player, chestBlock, chestOwners, playerDefaultPublicSettings, playerDefaultHopperSettings);
 				break;
 			}
 		}
 	}
 	
 	// 管理面板GUI点击
-	public static void handleManagementPanelClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Boolean> playerDefaultPublicSettings) {
+	public static void handleManagementPanelClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Boolean> playerDefaultPublicSettings, Map<UUID, Boolean> playerDefaultHopperSettings) {
 		// 检查点击冷却
 		if (isOnCooldown(player)) {
 			return; // 在冷却中，忽略点击
 		}
 		
+		UUID ownerUUID = player.getUniqueId();
+		
 		if (slot == 1) {
-			UUID ownerUUID = player.getUniqueId();
+			// 切换默认公开/私有设置
 			boolean currentDefault = playerDefaultPublicSettings.getOrDefault(ownerUUID, false);
 			boolean newDefault = !currentDefault;
 			playerDefaultPublicSettings.put(ownerUUID, newDefault);
 			player.sendMessage("§a已将新放置箱子的默认状态设置为 §" + (newDefault ? "a公开" : "c私有"));
 			// 刷新管理面板GUI
 			Bukkit.getScheduler().runTaskLater(plugin, () -> {
-				openManagementPanelGui(player, chestBlock, chestOwners, playerDefaultPublicSettings);
+				openManagementPanelGui(player, chestBlock, chestOwners, playerDefaultPublicSettings, playerDefaultHopperSettings);
+			}, 2L);
+		} else if (slot == 2) {
+			// 切换默认漏斗设置
+			boolean currentHopper = playerDefaultHopperSettings.getOrDefault(ownerUUID, false);
+			boolean newHopper = !currentHopper;
+			playerDefaultHopperSettings.put(ownerUUID, newHopper);
+			player.sendMessage("§a已将新放置容器的默认漏斗传输设置为 §" + (newHopper ? "a打开" : "c关闭"));
+			// 刷新管理面板GUI
+			Bukkit.getScheduler().runTaskLater(plugin, () -> {
+				openManagementPanelGui(player, chestBlock, chestOwners, playerDefaultPublicSettings, playerDefaultHopperSettings);
 			}, 2L);
 		}
 	}

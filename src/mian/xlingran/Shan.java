@@ -65,6 +65,7 @@ public class Shan extends JavaPlugin implements Listener {
 	private Map<UUID, String> playerPendingPasswordChests = new HashMap<>(); // 记录玩家正在操作密码的箱子位置
 	private Map<UUID, Map.Entry<String, String>> verifiedPasswordChests = new HashMap<>(); // 已通过密码验证的玩家（临时权限）：存储 箱子位置 和 验证时的密码
 	private Map<UUID, Boolean> playerDefaultPublicSettings = new HashMap<>(); // 玩家默认新箱子公开/私有设置：true=公开, false/null=私有
+	private Map<UUID, Boolean> playerDefaultHopperSettings = new HashMap<>(); // 玩家默认新箱子漏斗传输设置：true=打开, false/null=关闭
 	private File dataFile;
 	
 	private Set<UUID> guiOpeningPlayers = new HashSet<>();
@@ -244,6 +245,13 @@ public class Shan extends JavaPlugin implements Listener {
 			if (defaultPublic != null && defaultPublic) {
 				// 如果玩家设置为默认公开，则新箱子自动设为公开
 				publicChests.add(locationKey);
+			}
+			
+			// 应用玩家的默认漏斗传输设置
+			Boolean defaultHopper = playerDefaultHopperSettings.get(ownerUUID);
+			if (defaultHopper != null && defaultHopper) {
+				// 如果玩家设置为默认打开漏斗，则新箱子自动开启漏斗传输
+				hopperEnabledChests.add(locationKey);
 			}
 			
 			saveChestData();
@@ -465,7 +473,7 @@ public class Shan extends JavaPlugin implements Listener {
 			Bukkit.getScheduler().runTaskLater(this, () -> {
 				Block cb = parseBlockLocation(player, loc);
 				if (cb != null) {
-					ShanGui.handleBoxManageClick(player, s, cb, chestOwners, chestPermissions, globalPermissions, publicChests, hopperEnabledChests, chestPasswords, playerDefaultPublicSettings);
+					ShanGui.handleBoxManageClick(player, s, cb, chestOwners, chestPermissions, globalPermissions, publicChests, hopperEnabledChests, chestPasswords, playerDefaultPublicSettings, playerDefaultHopperSettings);
 				}
 			}, 2L);
 		}
@@ -477,7 +485,7 @@ public class Shan extends JavaPlugin implements Listener {
 			Bukkit.getScheduler().runTaskLater(this, () -> {
 				Block cb = parseBlockLocation(player, loc);
 				if (cb != null) {
-					ShanGui.handleManagementPanelClick(player, s, cb, chestOwners, playerDefaultPublicSettings);
+					ShanGui.handleManagementPanelClick(player, s, cb, chestOwners, playerDefaultPublicSettings, playerDefaultHopperSettings);
 				}
 			}, 2L);
 		}
@@ -673,6 +681,11 @@ public class Shan extends JavaPlugin implements Listener {
 				writer.write("playerDefault:" + entry.getKey().toString() + "=" + entry.getValue());
 				writer.newLine();
 			}
+			// 保存玩家默认漏斗传输设置
+			for (Map.Entry<UUID, Boolean> entry : playerDefaultHopperSettings.entrySet()) {
+				writer.write("playerDefaultHopper:" + entry.getKey().toString() + "=" + entry.getValue());
+				writer.newLine();
+			}
 		} catch (IOException e) {
 			getLogger().log(Level.SEVERE, "无法保存箱子数据", e);
 		}
@@ -729,11 +742,19 @@ public class Shan extends JavaPlugin implements Listener {
 								Boolean isDefaultPublic = Boolean.parseBoolean(parts2[1]);
 								playerDefaultPublicSettings.put(playerUUID, isDefaultPublic);
 							}
+						} else if (key.startsWith("playerDefaultHopper:")) {
+							// 加载玩家默认漏斗传输设置
+							String[] parts2 = key.substring(20).split("=", 2);
+							if (parts2.length == 2) {
+								UUID playerUUID = UUID.fromString(parts2[0]);
+								Boolean isDefaultHopper = Boolean.parseBoolean(parts2[1]);
+								playerDefaultHopperSettings.put(playerUUID, isDefaultHopper);
+							}
 						}
 					}
 				}
 			}
-			getLogger().info("已加载 " + chestOwners.size() + " 个箱子的数据，" + globalPermissions.size() + " 个全局授权关系，" + publicChests.size() + " 个公开箱子，" + hopperEnabledChests.size() + " 个开启漏斗传输的箱子，" + chestPasswords.size() + " 个密码箱，" + playerDefaultPublicSettings.size() + " 个玩家默认设置");
+			getLogger().info("已加载 " + chestOwners.size() + " 个箱子的数据，" + globalPermissions.size() + " 个全局授权关系，" + publicChests.size() + " 个公开箱子，" + hopperEnabledChests.size() + " 个开启漏斗传输的箱子，" + chestPasswords.size() + " 个密码箱，" + playerDefaultPublicSettings.size() + " 个玩家默认设置，" + playerDefaultHopperSettings.size() + " 个玩家默认漏斗设置");
 		} catch (IOException e) {
 			getLogger().log(Level.SEVERE, "无法加载箱子数据", e);
 		}
