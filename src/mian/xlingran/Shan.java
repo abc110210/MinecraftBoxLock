@@ -958,6 +958,14 @@ public class Shan extends JavaPlugin implements Listener {
 			return true;
 		}
 		
+		// 检查全局权限
+		if (ownerUUID != null) {
+			Set<UUID> globallyAuthorized = globalPermissions.get(ownerUUID);
+			if (globallyAuthorized != null && globallyAuthorized.contains(player.getUniqueId())) {
+				return true;
+			}
+		}
+		
 		// 检查单独权限
 		Set<UUID> allowedPlayers = chestPermissions.get(locationKey);
 		if (allowedPlayers != null && allowedPlayers.contains(player.getUniqueId())) {
