@@ -29,6 +29,12 @@ import java.util.logging.Handler;
 
 public class Shan extends JavaPlugin implements Listener {
 	
+	private static Shan instance;
+	
+	public static Shan getInstance() {
+		return instance;
+	}
+	
 	// 静态初始化块：在类加载时强制设置 UTF-8 编码，解决 Windows CMD 乱码
 	static {
 		try {
@@ -65,6 +71,7 @@ public class Shan extends JavaPlugin implements Listener {
 	
 	@Override
 	public void onEnable() {
+		instance = this;
 		ShanGui.setPlugin(this);
 		ShanMeta.init(this); // 初始化头颅缓存系统
 		Bukkit.getPluginManager().registerEvents(this, this);
