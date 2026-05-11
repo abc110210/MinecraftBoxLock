@@ -206,15 +206,7 @@ public class Shan extends JavaPlugin implements Listener {
 			verifiedPasswordChests.put(player.getUniqueId(), chestLocation);
 			waitingForPasswordInput.remove(player.getUniqueId());
 			playerPendingPasswordChests.remove(player.getUniqueId());
-			player.sendMessage("§a密码正确，箱子已打开！");
-
-			// 尝试重新打开箱子
-			Bukkit.getScheduler().runTask(this, () -> {
-				Block chestBlock = parseBlockLocation(player, chestLocation);
-				if (chestBlock != null) {
-					player.openInventory(((org.bukkit.block.Chest) chestBlock.getState()).getInventory());
-				}
-			});
+			player.sendMessage("§a密码正确，请再次右键点击箱子打开");
 		} else {
 			player.sendMessage("§c密码错误，请重新输入");
 			player.sendMessage("§a输入 §equit §a取消打开");
