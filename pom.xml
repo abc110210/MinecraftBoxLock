@@ -26,6 +26,7 @@
                 <directory>${basedir}</directory>
                 <includes>
                     <include>plugin.yml</include>
+                    <include>Gui.yml</include>
                 </includes>
             </resource>
         </resources>
