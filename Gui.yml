@@ -3,8 +3,6 @@
 Rongqi: 
     # 箱子管理Gui标题
     name: "&e箱子管理"
-    # 行数
-    rows: 3
     Alone:
         material: PLAYER_HEAD
         slot: 10
@@ -44,16 +42,105 @@ Rongqi:
         Lore:
             - "&8&l- &6为箱子设置密码保护"
             - "&8&l- &6设置后所有玩家都需要输入密码才能打开"
-            - "&e当前状态: {password}"
+            - "&e当前状态: {Password}"
     Manage:
         material: REPEATER
         slot: 22
         name: "&b管理面板"
         Lore:
             - "&8&l- &6管理你的默认箱子设置"
-    Placeholder:
+    Development:
         material: BARRIER
         slot: 24
         name: "&c待开发"
         Lore:
             - ""
+#单独权限设置Gui
+IndPer:
+    name: "&b单独权限设置"
+    SetPer:
+        material: NAME_TAG
+        slot: 11
+        name: "&a设置权限"
+        Lore:
+            - ""
+    DelPer:
+        material: BEACON
+        slot: 15
+        name: "&c取消权限"
+        Lore:
+            - ""
+    IndPerBack:
+        material: WHITE_STAINED_GLASS_PANE
+        slot: 26
+        name: "&8返回"
+        Lore:
+            - ""
+# 全局权限设置Gui
+GloPer:
+    name: "&b全局权限设置"
+    SetGloPer:
+        material: NAME_TAG
+        slot: 11
+        name: "&a添加全局权限"
+        Lore:
+            - ""
+    DelGloPer:
+        material: BEACON
+        slot: 15
+        name: "&c删除全局权限"
+        Lore:
+            - ""
+    GloPerBack:
+        material: WHITE_STAINED_GLASS_PANE
+        slot: 26
+        name: "&8返回"
+        Lore:
+            - ""
+# 管理面板Gui
+ManagePanel:
+    name: "&b管理面板"
+    DeafultBox:
+        material: BOOK
+        slot: 1
+        name: "&b默认公开/私有设置"
+        Lore:
+            - ""
+            - "&3私有&8&l- &6你新放置的箱子默认为私有"
+            - "&3公开&8&l- &6你新放置的箱子默认为公开"
+            - "&e当前默认状态: {DefaultBoxStatus}"
+    DefaultFunnel:
+        material: HOPPER
+        slot: 2
+        name: "&a默认漏斗设置"
+        Lore:
+            - ""
+            - "&8&l- &6默认漏斗开关"
+            - "&8&l打开- &6新放置的容器默认打开漏斗传输"
+            - "&8&l关闭- &6新放置的容器默认关闭漏斗传输"
+            - "&e当前状态: {DefaultFunnel}"
+    ManageBack:
+        material: WHITE_STAINED_GLASS_PANE
+        slot: 8
+        name: "&8返回"
+        Lore:
+            - ""
+
+# 变量设置
+Variable:
+    # 锁定开关变量
+    LockstatusOn: "&a公开"
+    LockstatusOFF: "&c私有"
+    # 漏斗开关变量
+    FunnelstatusOn: "&a开"
+    FunnelstatusOFF: "&c关"
+    # 密码箱变量
+    PasswordOn: "&a已设置"
+    PasswordOFF: "&c未设置"
+    # 默认箱子 私有/公开 设置
+    DefaultBoxStatusOn: "&a公开"
+    DefaultBoxStatusOFF: "&c私有"
+    # 默认漏斗开关设置
+    DefaultFunnelOn: "&a打开"
+    DefaultFunnelOFF: "&c关闭"
+    
