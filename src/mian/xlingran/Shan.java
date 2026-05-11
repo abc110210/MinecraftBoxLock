@@ -60,8 +60,9 @@ public class Shan extends JavaPlugin implements Listener {
 	private Set<String> publicChests = new HashSet<>(); // 公开的箱子（全服可打开但无法破坏）
 	private Set<String> hopperEnabledChests = new HashSet<>(); // 允许漏斗传输的箱子
 	private Map<String, String> chestPasswords = new HashMap<>(); // 密码箱的密码存储
-	private Set<UUID> waitingForPasswordInput = new HashSet<>(); // 等待输入密码的玩家
-	private Map<UUID, String> playerPendingPasswordChests = new HashMap<>(); // 记录玩家正在设置密码的箱子位置
+	private Set<UUID> waitingForPasswordSet = new HashSet<>(); // 等待设置密码的玩家（主人）
+	private Set<UUID> waitingForPasswordOpen = new HashSet<>(); // 等待输入密码打开箱子的玩家（路人）
+	private Map<UUID, String> playerPendingPasswordChests = new HashMap<>(); // 记录玩家正在操作密码的箱子位置
 	private Map<UUID, Map.Entry<String, String>> verifiedPasswordChests = new HashMap<>(); // 已通过密码验证的玩家（临时权限）：存储 箱子位置 和 验证时的密码
 	private File dataFile;
 	
@@ -128,11 +129,11 @@ public class Shan extends JavaPlugin implements Listener {
 		// 新的头颅缓存系统使用定时任务自动缓存，无需手动预缓存
 	}
 
-	// 监听聊天输入密码
+	// 监听聊天输入密码（设置密码 - 主人）
 	@EventHandler
 	public void onPlayerChat(org.bukkit.event.player.AsyncPlayerChatEvent event) {
 		Player player = event.getPlayer();
-		if (!waitingForPasswordInput.contains(player.getUniqueId())) {
+		if (!waitingForPasswordSet.contains(player.getUniqueId())) {
 			return;
 		}
 
@@ -141,12 +142,12 @@ public class Shan extends JavaPlugin implements Listener {
 		String chestLocation = playerPendingPasswordChests.get(player.getUniqueId());
 
 		if (chestLocation == null) {
-			waitingForPasswordInput.remove(player.getUniqueId());
+			waitingForPasswordSet.remove(player.getUniqueId());
 			return;
 		}
 
 		if (message.equalsIgnoreCase("quit")) {
-			waitingForPasswordInput.remove(player.getUniqueId());
+			waitingForPasswordSet.remove(player.getUniqueId());
 			playerPendingPasswordChests.remove(player.getUniqueId());
 			player.sendMessage("§a已取消设置密码");
 			return;
@@ -162,7 +163,7 @@ public class Shan extends JavaPlugin implements Listener {
 		// 设置成功
 		chestPasswords.put(chestLocation, message);
 		saveChestData();
-		waitingForPasswordInput.remove(player.getUniqueId());
+		waitingForPasswordSet.remove(player.getUniqueId());
 		playerPendingPasswordChests.remove(player.getUniqueId());
 		player.sendMessage("§a密码箱设置成功！");
 
@@ -175,11 +176,11 @@ public class Shan extends JavaPlugin implements Listener {
 		});
 	}
 
-	// 监听打开密码箱时的密码输入
+	// 监听打开密码箱时的密码输入（路人）
 	@EventHandler
 	public void onPlayerOpenPasswordChest(org.bukkit.event.player.AsyncPlayerChatEvent event) {
 		Player player = event.getPlayer();
-		if (!waitingForPasswordInput.contains(player.getUniqueId())) {
+		if (!waitingForPasswordOpen.contains(player.getUniqueId())) {
 			return;
 		}
 
@@ -188,12 +189,12 @@ public class Shan extends JavaPlugin implements Listener {
 		String chestLocation = playerPendingPasswordChests.get(player.getUniqueId());
 
 		if (chestLocation == null) {
-			waitingForPasswordInput.remove(player.getUniqueId());
+			waitingForPasswordOpen.remove(player.getUniqueId());
 			return;
 		}
 
 		if (message.equalsIgnoreCase("quit")) {
-			waitingForPasswordInput.remove(player.getUniqueId());
+			waitingForPasswordOpen.remove(player.getUniqueId());
 			playerPendingPasswordChests.remove(player.getUniqueId());
 			player.sendMessage("§a已取消打开箱子");
 			return;
@@ -204,7 +205,7 @@ public class Shan extends JavaPlugin implements Listener {
 		if (correctPassword != null && message.equals(correctPassword)) {
 			// 密码正确，给予临时打开权限（存储箱子位置和验证时的密码）
 			verifiedPasswordChests.put(player.getUniqueId(), new AbstractMap.SimpleEntry<>(chestLocation, correctPassword));
-			waitingForPasswordInput.remove(player.getUniqueId());
+			waitingForPasswordOpen.remove(player.getUniqueId());
 			playerPendingPasswordChests.remove(player.getUniqueId());
 			player.sendMessage("§a密码正确，请再次右键点击箱子打开");
 		} else {
@@ -213,10 +214,10 @@ public class Shan extends JavaPlugin implements Listener {
 	}
 
 	/**
-	 * 设置玩家等待输入密码的状态
+	 * 设置玩家等待输入密码的状态（主人设置密码）
 	 */
 	public void setPasswordInputState(UUID playerUUID, String locationKey) {
-		waitingForPasswordInput.add(playerUUID);
+		waitingForPasswordSet.add(playerUUID);
 		playerPendingPasswordChests.put(playerUUID, locationKey);
 	}
 	
@@ -262,36 +263,42 @@ public class Shan extends JavaPlugin implements Listener {
 			return;
 		}
 		
+		// 箱子主人直接允许打开（密码箱对主人无效）
+		if (ownerUUID.equals(player.getUniqueId())) {
+			return;
+		}
+		
 		// 密码箱优先：如果箱子设置了密码
 		if (chestPasswords.containsKey(locationKey)) {
 			String currentPassword = chestPasswords.get(locationKey);
 			
 			// 检查玩家是否已经通过密码验证
 			Map.Entry<String, String> verifiedData = verifiedPasswordChests.get(player.getUniqueId());
+			boolean isPasswordModified = false;
 			if (verifiedData != null && verifiedData.getKey().equals(locationKey)) {
 				// 玩家之前验证过这个箱子，检查密码是否被修改
 				if (verifiedData.getValue().equals(currentPassword)) {
 					// 密码未修改，允许打开
 					return;
 				} else {
-					// 密码已修改，清除旧验证状态
+					// 密码已修改，清除旧验证状态并标记
 					verifiedPasswordChests.remove(player.getUniqueId());
-					// 继续执行下面的拦截逻辑
+					isPasswordModified = true;
 				}
 			}
-			
+							
 			// 未通过密码验证或密码已修改，拦截并提示输入密码
 			event.setCancelled(true);
-			
+							
 			// 判断是否是密码修改后的第一次打开
-			if (verifiedData != null && verifiedData.getKey().equals(locationKey)) {
+			if (isPasswordModified) {
 				player.sendMessage("§c密码已被修改，请重新输入密码（输入 quit 取消打开）");
 			} else {
 				player.sendMessage("§c该箱子已启用密码保护，请在聊天栏输入密码（输入 quit 取消打开）");
 			}
-			
-			// 进入等待输入密码状态
-			waitingForPasswordInput.add(player.getUniqueId());
+					
+			// 进入等待输入密码状态（路人打开箱子）
+			waitingForPasswordOpen.add(player.getUniqueId());
 			playerPendingPasswordChests.put(player.getUniqueId(), locationKey);
 			return;
 		}
