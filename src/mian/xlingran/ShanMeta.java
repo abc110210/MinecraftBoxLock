@@ -1,4 +1,4 @@
-package mian.xlingran;
+ package mian.xlingran;
 
 import org.bukkit.Bukkit;
 import org.bukkit.OfflinePlayer;
@@ -163,33 +163,29 @@ public class ShanMeta {
 			
 			// 找到第一个需要缓存的玩家
 			try {
-				ItemStack head = new ItemStack(org.bukkit.Material.PLAYER_HEAD);
-				SkullMeta meta = (SkullMeta) head.getItemMeta();
+				// 使用 Bukkit.getOfflinePlayer() 获取玩家资料（使用服务器已有缓存）
+				OfflinePlayer offlinePlayer = Bukkit.getOfflinePlayer(playerUUID);
+				org.bukkit.profile.PlayerProfile profile = offlinePlayer.getPlayerProfile();
 				
-				if (meta != null) {
-					meta.setOwningPlayer(player);
-					head.setItemMeta(meta);
+				if (profile != null) {
+					// 尝试从已有资料中提取纹理
+					String textureValue = extractTextureValue(profile);
 					
-					// 提取纹理数据
-					SkullMeta loadedMeta = (SkullMeta) head.getItemMeta();
-					if (loadedMeta != null && loadedMeta.hasOwner()) {
-						org.bukkit.profile.PlayerProfile profile = loadedMeta.getOwnerProfile();
-						if (profile != null) {
-							String textureValue = extractTextureValue(profile);
-							
-							if (textureValue != null) {
-								CachedHead newCache = new CachedHead(
-									playerUUID,
-									player.getName(),
-									textureValue,
-									System.currentTimeMillis()
-								);
-								headCache.put(playerUUID, newCache);
-								saveCache(headCache);
-								plugin.getLogger().info("已缓存玩家头颅: " + player.getName() + " (" + playerUUID + ")");
-							}
-						}
+					// 如果没有纹理数据，说明服务器缓存中还没有，跳过等待下次
+					if (textureValue == null) {
+						plugin.getLogger().info("玩家 " + player.getName() + " 纹理数据尚未加载，跳过等待下次缓存");
+						continue;
 					}
+					
+					CachedHead newCache = new CachedHead(
+						playerUUID,
+						player.getName(),
+						textureValue,
+						System.currentTimeMillis()
+					);
+					headCache.put(playerUUID, newCache);
+					saveCache(headCache);
+					plugin.getLogger().info("已缓存玩家头颅: " + player.getName() + " (" + playerUUID + ")");
 				}
 			} catch (Exception e) {
 				plugin.getLogger().log(Level.WARNING, "缓存玩家头颅失败: " + player.getName(), e);

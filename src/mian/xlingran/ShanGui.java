@@ -659,10 +659,7 @@ public class ShanGui {
 		String locationKey = getLocationKey(chestBlock);
 		Set<UUID> allowedPlayers = chestPermissions.get(locationKey);
 		
-		if (allowedPlayers == null) {
-			return false;
-		}
-		
+		// 先处理导航按钮，确保即使没有权限数据也能返回
 		// 上一页/返回 (第1页时返回上一级, 其他页时返回上一页)
 		if (slot == PREV_PAGE_SLOT) {
 			if (currentPage == 0) {
@@ -687,7 +684,7 @@ public class ShanGui {
 		
 		// 下一页
 		if (slot == NEXT_PAGE_SLOT) {
-			int totalPages = Math.max(1, (int) Math.ceil((double) allowedPlayers.size() / PLAYERS_PER_PAGE));
+			int totalPages = Math.max(1, (int) Math.ceil((double) (allowedPlayers != null ? allowedPlayers.size() : 0) / PLAYERS_PER_PAGE));
 			int newPage = Math.min(totalPages - 1, currentPage + 1);
 			playerGuiPages.put(player.getUniqueId(), newPage);
 			switchingGuiPlayers.add(player.getUniqueId());
@@ -695,6 +692,11 @@ public class ShanGui {
 				openPermissionRemoveGui(player, chestBlock, chestOwners, chestPermissions, newPage);
 				switchingGuiPlayers.remove(player.getUniqueId());
 			}, 2L);
+			return false;
+		}
+		
+		// 检查是否有权限数据
+		if (allowedPlayers == null || allowedPlayers.isEmpty()) {
 			return false;
 		}
 		
