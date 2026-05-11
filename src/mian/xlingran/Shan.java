@@ -169,7 +169,6 @@ public class Shan extends JavaPlugin implements Listener {
 		// 验证密码格式：4~8 位，仅英文和数字
 		if (!message.matches("[a-zA-Z0-9]{4,8}")) {
 			MessageUtil.sendMessage(player, "PasswordBoxLengthErro");
-			MessageUtil.sendMessage(player, "PasswordBoxSet");
 			return;
 		}
 
