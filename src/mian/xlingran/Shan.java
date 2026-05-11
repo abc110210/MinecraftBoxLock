@@ -62,7 +62,7 @@ public class Shan extends JavaPlugin implements Listener {
 	private Map<String, String> chestPasswords = new HashMap<>(); // 密码箱的密码存储
 	private Set<UUID> waitingForPasswordInput = new HashSet<>(); // 等待输入密码的玩家
 	private Map<UUID, String> playerPendingPasswordChests = new HashMap<>(); // 记录玩家正在设置密码的箱子位置
-	private Map<UUID, String> verifiedPasswordChests = new HashMap<>(); // 已通过密码验证的玩家（临时权限）
+	private Map<UUID, Map.Entry<String, String>> verifiedPasswordChests = new HashMap<>(); // 已通过密码验证的玩家（临时权限）：存储 箱子位置 和 验证时的密码
 	private File dataFile;
 	
 	private Set<UUID> guiOpeningPlayers = new HashSet<>();
@@ -202,14 +202,13 @@ public class Shan extends JavaPlugin implements Listener {
 		// 验证密码
 		String correctPassword = chestPasswords.get(chestLocation);
 		if (correctPassword != null && message.equals(correctPassword)) {
-			// 密码正确，给予临时打开权限
-			verifiedPasswordChests.put(player.getUniqueId(), chestLocation);
+			// 密码正确，给予临时打开权限（存储箱子位置和验证时的密码）
+			verifiedPasswordChests.put(player.getUniqueId(), new AbstractMap.SimpleEntry<>(chestLocation, correctPassword));
 			waitingForPasswordInput.remove(player.getUniqueId());
 			playerPendingPasswordChests.remove(player.getUniqueId());
 			player.sendMessage("§a密码正确，请再次右键点击箱子打开");
 		} else {
-			player.sendMessage("§c密码错误，请重新输入");
-			player.sendMessage("§a输入 §equit §a取消打开");
+			player.sendMessage("§c密码错误，请重新输入（输入 quit 取消打开）");
 		}
 	}
 
@@ -265,21 +264,35 @@ public class Shan extends JavaPlugin implements Listener {
 		
 		// 密码箱优先：如果箱子设置了密码
 		if (chestPasswords.containsKey(locationKey)) {
+			String currentPassword = chestPasswords.get(locationKey);
+			
 			// 检查玩家是否已经通过密码验证
-			String verifiedLocation = verifiedPasswordChests.get(player.getUniqueId());
-			if (verifiedLocation != null && verifiedLocation.equals(locationKey)) {
-				// 已通过密码验证，允许打开
-				return;
+			Map.Entry<String, String> verifiedData = verifiedPasswordChests.get(player.getUniqueId());
+			if (verifiedData != null && verifiedData.getKey().equals(locationKey)) {
+				// 玩家之前验证过这个箱子，检查密码是否被修改
+				if (verifiedData.getValue().equals(currentPassword)) {
+					// 密码未修改，允许打开
+					return;
+				} else {
+					// 密码已修改，清除旧验证状态
+					verifiedPasswordChests.remove(player.getUniqueId());
+					// 继续执行下面的拦截逻辑
+				}
 			}
 			
-			// 未通过密码验证，拦截并提示输入密码
+			// 未通过密码验证或密码已修改，拦截并提示输入密码
 			event.setCancelled(true);
-			player.sendMessage("§c该箱子已启用密码保护，请在聊天栏输入密码");
+			
+			// 判断是否是密码修改后的第一次打开
+			if (verifiedData != null && verifiedData.getKey().equals(locationKey)) {
+				player.sendMessage("§c密码已被修改，请重新输入密码（输入 quit 取消打开）");
+			} else {
+				player.sendMessage("§c该箱子已启用密码保护，请在聊天栏输入密码（输入 quit 取消打开）");
+			}
 			
 			// 进入等待输入密码状态
 			waitingForPasswordInput.add(player.getUniqueId());
 			playerPendingPasswordChests.put(player.getUniqueId(), locationKey);
-			player.sendMessage("§a输入 §equit §a取消打开");
 			return;
 		}
 		
