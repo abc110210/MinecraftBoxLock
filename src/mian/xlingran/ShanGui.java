@@ -487,9 +487,13 @@ public class ShanGui {
 						openBoxManageGui(player, chestBlock, chestOwners, publicChests, hopperEnabledChests, chestPasswords);
 					}, 2L);
 				} else {
-					// 没有密码，提示输入
+					// 没有密码，进入等待输入状态
 					player.sendMessage("§a请输入 §b4~8 位 §a密码（仅支持英文和数字）");
 					player.sendMessage("§a输入 §equit §a取消设置");
+								
+					// 标记玩家正在设置密码并记录对应的箱子位置
+					player.closeInventory();
+					mian.xlingran.Shan.getInstance().setPasswordInputState(player.getUniqueId(), locationKey);
 				}
 				break;
 			}

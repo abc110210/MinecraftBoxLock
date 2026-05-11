@@ -55,6 +55,7 @@ public class Shan extends JavaPlugin implements Listener {
 	private Set<String> hopperEnabledChests = new HashSet<>(); // 允许漏斗传输的箱子
 	private Map<String, String> chestPasswords = new HashMap<>(); // 密码箱的密码存储
 	private Set<UUID> waitingForPasswordInput = new HashSet<>(); // 等待输入密码的玩家
+	private Map<UUID, String> playerPendingPasswordChests = new HashMap<>(); // 记录玩家正在设置密码的箱子位置
 	private File dataFile;
 	
 	private Set<UUID> guiOpeningPlayers = new HashSet<>();
@@ -117,6 +118,61 @@ public class Shan extends JavaPlugin implements Listener {
 	@EventHandler
 	public void onPlayerJoin(org.bukkit.event.player.PlayerJoinEvent event) {
 		// 新的头颅缓存系统使用定时任务自动缓存，无需手动预缓存
+	}
+
+	// 监听聊天输入密码
+	@EventHandler
+	public void onPlayerChat(org.bukkit.event.player.AsyncPlayerChatEvent event) {
+		Player player = event.getPlayer();
+		if (!waitingForPasswordInput.contains(player.getUniqueId())) {
+			return;
+		}
+
+		event.setCancelled(true); // 阻止密码显示在聊天栏
+		String message = event.getMessage().trim();
+		String chestLocation = playerPendingPasswordChests.get(player.getUniqueId());
+
+		if (chestLocation == null) {
+			waitingForPasswordInput.remove(player.getUniqueId());
+			return;
+		}
+
+		if (message.equalsIgnoreCase("quit")) {
+			waitingForPasswordInput.remove(player.getUniqueId());
+			playerPendingPasswordChests.remove(player.getUniqueId());
+			player.sendMessage("§a已取消设置密码");
+			return;
+		}
+
+		// 验证密码格式：4~8 位，仅英文和数字
+		if (!message.matches("[a-zA-Z0-9]{4,8}")) {
+			player.sendMessage("§c密码长度必须在 4~8 位之间，且仅支持英文和数字，请重新输入");
+			player.sendMessage("§a输入 §equit §a取消设置");
+			return;
+		}
+
+		// 设置成功
+		chestPasswords.put(chestLocation, message);
+		saveChestData();
+		waitingForPasswordInput.remove(player.getUniqueId());
+		playerPendingPasswordChests.remove(player.getUniqueId());
+		player.sendMessage("§a密码箱设置成功！");
+
+		// 刷新 GUI (异步事件需切回主线程)
+		Bukkit.getScheduler().runTask(this, () -> {
+			Block chestBlock = parseBlockLocation(player, chestLocation);
+			if (chestBlock != null) {
+				ShanGui.openBoxManageGui(player, chestBlock, chestOwners, publicChests, hopperEnabledChests, chestPasswords);
+			}
+		});
+	}
+
+	/**
+	 * 设置玩家等待输入密码的状态
+	 */
+	public void setPasswordInputState(UUID playerUUID, String locationKey) {
+		waitingForPasswordInput.add(playerUUID);
+		playerPendingPasswordChests.put(playerUUID, locationKey);
 	}
 	
 	@EventHandler
