@@ -245,6 +245,9 @@ public class Shan extends JavaPlugin implements Listener {
 			if (defaultPublic != null && defaultPublic) {
 				// 如果玩家设置为默认公开，则新箱子自动设为公开
 				publicChests.add(locationKey);
+				player.sendMessage("§a你放置了一个公开未上锁的箱子");
+			} else {
+				player.sendMessage("§a你放置了一个私有的箱子");
 			}
 			
 			// 应用玩家的默认漏斗传输设置
@@ -479,6 +482,19 @@ public class Shan extends JavaPlugin implements Listener {
 		}
 		else if (ShanGui.isManagementPanelGui(title)) {
 			event.setCancelled(true);
+			// 处理返回按钮（第8格）
+			if (slot == 8) {
+				switchingGuiPlayers.add(player.getUniqueId());
+				final String loc = chestLocation;
+				Bukkit.getScheduler().runTaskLater(this, () -> {
+					Block cb = parseBlockLocation(player, loc);
+					if (cb != null) {
+						ShanGui.openBoxManageGui(player, cb, chestOwners, publicChests, hopperEnabledChests, chestPasswords, playerDefaultPublicSettings);
+					}
+				}, 2L);
+				return;
+			}
+			
 			switchingGuiPlayers.add(player.getUniqueId());
 			final String loc = chestLocation;
 			final int s = slot;

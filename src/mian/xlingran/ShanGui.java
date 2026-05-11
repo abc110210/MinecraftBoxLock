@@ -81,8 +81,8 @@ public class ShanGui {
 		
 		ItemStack wheat = createItem(Material.WHEAT, "§b全局权限设置",
 			" ",
-			"§8§l- §6有权限的玩家可以打开你所有箱子",
-			"§8§l- §6对你所有箱子权限设置"
+			"§8§l- §6有权限的玩家可以打开你所有的箱子",
+			"§8§l- §6对你箱子所有权限设置"
 		);
 		gui.setItem(12, wheat);
 		
@@ -94,8 +94,8 @@ public class ShanGui {
 		ItemStack chest = createItem(Material.CHEST, "§9锁定开关",
 			" ",
 			"§8§l- §6在这里切换你的箱子状态",
-			"§b私有 §8- §6拥有权限的玩家才能打开",
-			"§b公开 §8- §6所有的玩家都可以打开你的箱子",
+			"§b私有 §8§l- §6拥有权限的玩家才能打开",
+			"§b公开 §8§l- §6所有的玩家都可以打开你的箱子",
 			"§e当前状态: " + statusColor
 		);
 		gui.setItem(14, chest);
@@ -171,6 +171,10 @@ public class ShanGui {
 			"§e当前状态: " + hopperStatus
 		);
 		gui.setItem(2, hopper);
+		
+		// 返回按钮 (最后格子，索引为8)
+		ItemStack returnButton = createItem(Material.WHITE_STAINED_GLASS_PANE, "§8返回");
+		gui.setItem(8, returnButton);
 		
 		player.openInventory(gui);
 	}
@@ -706,6 +710,7 @@ public class ShanGui {
 							}
 						}
 						
+						player.sendMessage("§a成功对该玩家 " + playerName + " 添加所有箱子权限");
 						player.closeInventory();
 						return true;
 					}
@@ -797,6 +802,8 @@ public class ShanGui {
 							globalPermissions.remove(ownerUUID);
 						}
 						
+						player.sendMessage("§a成功对该玩家 " + playerName + " 取消所有箱子权限");
+						
 						// 刷新当前页面
 						int totalPages = Math.max(1, (int) Math.ceil((double) authorizedPlayers.size() / PLAYERS_PER_PAGE));
 						int page = Math.min(currentPage, totalPages - 1);
@@ -841,6 +848,7 @@ public class ShanGui {
 					OfflinePlayer targetPlayer = Bukkit.getOfflinePlayer(playerName);
 					if (targetPlayer != null && targetPlayer.getUniqueId() != null) {
 						allowedPlayers.add(targetPlayer.getUniqueId());
+						player.sendMessage("§a成功对该玩家 " + playerName + " 添加此箱子权限");
 						player.closeInventory();
 						return true;
 					}
@@ -913,6 +921,7 @@ public class ShanGui {
 					OfflinePlayer targetPlayer = Bukkit.getOfflinePlayer(playerName);
 					if (targetPlayer != null && targetPlayer.getUniqueId() != null) {
 						allowedPlayers.remove(targetPlayer.getUniqueId());
+						player.sendMessage("§c成功对该玩家 " + playerName + " 取消此箱子权限");
 						
 						// 刷新当前页面
 						int totalPages = Math.max(1, (int) Math.ceil((double) allowedPlayers.size() / PLAYERS_PER_PAGE));
@@ -978,11 +987,10 @@ public class ShanGui {
 		SkullMeta meta = (SkullMeta) head.getItemMeta();
 		
 		if (meta != null) {
-			meta.setDisplayName("§a单独权限");
+			meta.setDisplayName("§e单独权限");
 			
 			// 添加 Lore 描述
 			List<String> lore = new ArrayList<>();
-			lore.add(" ");
 			lore.add("§8§l- §6给予玩家可以打开该箱子");
 			lore.add("§8§l- §6对单个箱子权限设置");
 			meta.setLore(lore);
