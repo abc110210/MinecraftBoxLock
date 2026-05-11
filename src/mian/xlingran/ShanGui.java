@@ -1084,7 +1084,7 @@ public class ShanGui {
 			boolean currentDefault = playerDefaultPublicSettings.getOrDefault(ownerUUID, false);
 			boolean newDefault = !currentDefault;
 			playerDefaultPublicSettings.put(ownerUUID, newDefault);
-			MessageUtil.sendMessage(player, newDefault ? "DefaultPlaceDisable" : "DefaultPlaceEnable");
+			MessageUtil.sendMessage(player, newDefault ? "DefaultPlaceEnable" : "DefaultPlaceDisable");
 			// 刷新管理面板GUI
 			Bukkit.getScheduler().runTaskLater(plugin, () -> {
 				openManagementPanelGui(player, chestBlock, chestOwners, playerDefaultPublicSettings, playerDefaultHopperSettings);
