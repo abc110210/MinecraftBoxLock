@@ -85,10 +85,15 @@ public class Shan extends JavaPlugin implements Listener {
 		this.getCommand("xlrdel").setExecutor(this);
 		
 		// 初始化
-		dataFile = new File(getDataFolder(), "chests.yml");
 		if (!getDataFolder().exists()) {
 			getDataFolder().mkdirs();
 		}
+		
+		// 释放 Gui.yml 文件到插件目录
+		saveResource("Gui.yml", false);
+		
+		// 初始化 chests.yml
+		dataFile = new File(getDataFolder(), "chests.yml");
 		
 		// 加载数据
 		loadChestData();
@@ -786,6 +791,34 @@ public class Shan extends JavaPlugin implements Listener {
 		
 		Player player = (Player) sender;
 		
+		// 处理 reload 指令
+		if (label.equalsIgnoreCase("xlr") && args.length == 1 && args[0].equalsIgnoreCase("reload")) {
+			// 检查权限（OP 或有权限节点）
+			if (!player.hasPermission("xlr.reload") && !player.isOp()) {
+				player.sendMessage("§c你没有权限执行此命令！");
+				return true;
+			}
+			
+			// 保存当前数据
+			saveChestData();
+			
+			// 清空所有内存数据
+			chestOwners.clear();
+			chestPermissions.clear();
+			globalPermissions.clear();
+			publicChests.clear();
+			hopperEnabledChests.clear();
+			chestPasswords.clear();
+			playerDefaultPublicSettings.clear();
+			playerDefaultHopperSettings.clear();
+			
+			// 重新加载数据
+			loadChestData();
+			
+			player.sendMessage("§a插件数据已重载！");
+			return true;
+		}
+		
 		if (args.length != 1) {
 			if (label.equalsIgnoreCase("xlr")) {
 				player.sendMessage("§c用法: /xlr <玩家名称>");
@@ -793,6 +826,9 @@ public class Shan extends JavaPlugin implements Listener {
 			} else if (label.equalsIgnoreCase("xlrdel")) {
 				player.sendMessage("§c用法: /xlrdel <玩家名称>");
 				player.sendMessage("§c取消指定玩家对您所有箱子的权限");
+			} else if (label.equalsIgnoreCase("xlr") && args.length > 0) {
+				// 如果参数存在但不是 reload（前面已处理）
+				player.sendMessage("§c用法: /xlr <玩家名称>");
 			}
 			return true;
 		}
