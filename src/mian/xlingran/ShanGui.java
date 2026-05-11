@@ -888,12 +888,20 @@ public class ShanGui {
 		return slots;
 	}
 	
-	// 判断Gui
+	// 判断Gui（动态从配置文件读取标题进行匹配）
 	public static boolean isBoxManageGui(String title) {
+		if (guiConfig != null && guiConfig.contains("Rongqi.name")) {
+			String configTitle = guiConfig.getString("Rongqi.name").replace('&', '§');
+			return configTitle.equals(title);
+		}
 		return BOX_MANAGE_TITLE.equals(title);
 	}
 	
 	public static boolean isSinglePermissionGui(String title) {
+		if (guiConfig != null && guiConfig.contains("IndPer.name")) {
+			String configTitle = guiConfig.getString("IndPer.name").replace('&', '§');
+			return configTitle.equals(title);
+		}
 		return SINGLE_PERMISSION_TITLE.equals(title);
 	}
 	
@@ -906,6 +914,10 @@ public class ShanGui {
 	}
 	
 	public static boolean isGlobalPermissionGui(String title) {
+		if (guiConfig != null && guiConfig.contains("GloPer.name")) {
+			String configTitle = guiConfig.getString("GloPer.name").replace('&', '§');
+			return configTitle.equals(title);
+		}
 		return GLOBAL_PERMISSION_TITLE.equals(title);
 	}
 	
@@ -917,7 +929,13 @@ public class ShanGui {
 		return GLOBAL_REMOVE_TITLE.equals(title);
 	}
 	
-	// 箱子管理GUI点击
+	public static boolean isManagementPanelGui(String title) {
+		if (guiConfig != null && guiConfig.contains("ManagePanel.name")) {
+			String configTitle = guiConfig.getString("ManagePanel.name").replace('&', '§');
+			return configTitle.equals(title);
+		}
+		return MANAGEMENT_PANEL_TITLE.equals(title);
+	}
 	public static void handleBoxManageClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<String, Set<UUID>> chestPermissions, Map<UUID, Set<UUID>> globalPermissions, Set<String> publicChests, Set<String> hopperEnabledChests, Map<String, String> chestPasswords, Map<UUID, Boolean> playerDefaultPublicSettings, Map<UUID, Boolean> playerDefaultHopperSettings) {
 		// 检查点击冷却
 		if (isOnCooldown(player)) {
