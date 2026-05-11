@@ -455,7 +455,7 @@ public class ShanGui {
 				}
 				// 刷新GUI
 				Bukkit.getScheduler().runTaskLater(plugin, () -> {
-					openBoxManageGui(player, chestBlock, chestOwners, publicChests, hopperEnabledChests);
+					openBoxManageGui(player, chestBlock, chestOwners, publicChests, hopperEnabledChests, chestPasswords);
 				}, 2L);
 				break;
 			}
