@@ -78,7 +78,6 @@ public class Shan extends JavaPlugin implements Listener {
 		instance = this;
 		ShanGui.setPlugin(this);
 		ShanMeta.init(this); // 初始化头颅缓存系统
-		MessageUtil.init(this); // 初始化消息系统
 		Bukkit.getPluginManager().registerEvents(this, this);
 		
 		// 注册指令
@@ -96,6 +95,8 @@ public class Shan extends JavaPlugin implements Listener {
 		
 		// 加载GUI配置
 		ShanGui.loadGuiConfig(this);
+		// 加载消息配置（必须在 saveResource 之后）
+		MessageUtil.init(this);
 		
 		// 初始化 chests.yml
 		dataFile = new File(getDataFolder(), "chests.yml");
