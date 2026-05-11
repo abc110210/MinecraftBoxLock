@@ -1,18 +1,29 @@
 # Gui界面
 # 箱子管理Gui
 Rongqi: 
+    # 箱子管理Gui标题
     name: "&e箱子管理"
+    # 行数
+    rows: 3
     Alone:
+        material: PLAYER_HEAD
+        slot: 10
+        # 名称
         name: "&e单独权限"
+        # Lore
         Lore:
             - "&8&l- &6给予玩家可以打开该箱子"
             - "&8&l- &6对单个箱子权限设置"
     Global:
+        material: WHEAT
+        slot: 12
         name: "&b全局权限设置"
         Lore:
             - "&8&l- &6有权限的玩家可以打开你所有的箱子"
             - "&8&l- &6对你箱子所有权限设置"
     Lock:
+        material: CHEST
+        slot: 14
         name: "&9锁定开关"
         Lore:
             - "&8&l- &6在这里切换你的箱子状态"
@@ -20,17 +31,29 @@ Rongqi:
             - "&b公开 &8&l- &6所有的玩家都可以打开你的箱子"
             - "&e当前状态: {Lockstatus}"
     Funnel:
+        material: HOPPER
+        slot: 16
         name: "&b漏斗开关"
         Lore:
             - "&8&l- &6打开和关闭漏斗传输"
             - "&e当前状态: {Funnelstatus}"
     Password:
+        material: PAPER
+        slot: 20
         name: "&3密码箱"
         Lore:
-            - "&8&l- &6未箱子设置密码保护"
+            - "&8&l- &6为箱子设置密码保护"
             - "&8&l- &6设置后所有玩家都需要输入密码才能打开"
             - "&e当前状态: {password}"
     Manage:
+        material: REPEATER
+        slot: 22
         name: "&b管理面板"
         Lore:
             - "&8&l- &6管理你的默认箱子设置"
+    Placeholder:
+        material: BARRIER
+        slot: 24
+        name: "&c待开发"
+        Lore:
+            - ""
