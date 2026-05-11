@@ -652,10 +652,17 @@ public class Shan extends JavaPlugin implements Listener {
 		}
 	}
 	
-	// 箱子类型
+	// 容器类型（支持箱子、熔炉、发射器等多种容器）
 	private boolean isChest(Material material) {
 		return material == Material.CHEST || 
-		       material == Material.TRAPPED_CHEST;
+		       material == Material.TRAPPED_CHEST ||
+		       material == Material.FURNACE ||           // 熔炉
+		       material == Material.BLAST_FURNACE ||     // 高炉
+		       material == Material.SMOKER ||            // 烟熏炉
+		       material == Material.DISPENSER ||         // 发射器
+		       material == Material.DROPPER ||           // 投掷器
+		       material == Material.CRAFTING_TABLE ||    // 合成台
+		       material == Material.LOOM;                // 织布机
 	}
 	
 	//箱子位置

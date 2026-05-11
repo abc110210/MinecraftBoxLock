@@ -161,8 +161,8 @@ public class ShanGui {
 			ownerMeta.setDisplayName("§b独立权限");
 			List<String> ownerLore = new ArrayList<>();
 			ownerLore.add("");
-			ownerLore.add("§8&l- §6授权的玩家可以打开这个箱子");
-			ownerLore.add("§8&l- §6对单箱子的设置");
+			ownerLore.add("§8&l- §6授权的玩家可以打开这个容器");
+			ownerLore.add("§8&l- §6对单容器的设置");
 			ownerMeta.setLore(ownerLore);
 			ownerHead.setItemMeta(ownerMeta);
 		}
@@ -170,8 +170,8 @@ public class ShanGui {
 		
 		ItemStack wheat = createItem(Material.WHEAT, "§b全局权限设置",
 			"",
-			"§8&l- §6授权玩家可以打开你所有的箱子",
-			"§8&l- §6对所有箱子设置"
+			"§8&l- §6授权玩家可以打开你所有的容器",
+			"§8&l- §6对所有容器设置"
 		);
 		gui.setItem(12, wheat);
 		
@@ -182,9 +182,9 @@ public class ShanGui {
 		ItemStack chest = createItem(Material.CHEST, "§b锁定开关",
 			"",
 			"§3私有 §8&l- §6拥有权限的玩家才能打开",
-			"§3公开 §8&l- §6所有的玩家都可以打开你的箱子",
-			"§8&l- §6点击切换你的箱子状态",
-			"§8&l- §6箱子公开后只能打开，不能破坏",
+			"§3公开 §8&l- §6所有的玩家都可以打开你的容器",
+			"§8&l- §6点击切换你的容器状态",
+			"§8&l- §6容器公开后只能打开，不能破坏",
 			"",
 			"§9当前状态: " + statusColor
 		);
@@ -218,7 +218,7 @@ public class ShanGui {
 		ItemStack repeater = createItem(Material.REPEATER, "§b管理面板",
 			"",
 			"§8&l- §6管理容器默认设置",
-			"§8&l- §6新放置的箱子将按照设置的模式",
+			"§8&l- §6新放置的容器将按照设置的模式",
 			"§8&l- §6默认都是 §c关闭 §6的"
 		);
 		gui.setItem(22, repeater);
@@ -506,14 +506,15 @@ public class ShanGui {
 		
 		ItemStack nameTag = createItem(Material.NAME_TAG, "§a设置权限",
 			"",
-			"§8&l- §6对单个箱子的权限添加",
-			"§8&l- §6点击玩家头颅后可添加权限"
+			"§8&l- §6对单个容器的权限添加",
+			"§8&l- §6点击玩家头颅后可添加权限",
+			"§8&l- §6被添加权限的玩家可破坏你的容器"
 		);
 		gui.setItem(11, nameTag);
 		
 		ItemStack beacon = createItem(Material.BEACON, "§c取消权限",
 			"",
-			"§8&l- §6对单个箱子的权限移除",
+			"§8&l- §6对单个容器的权限移除",
 			"§8&l- §6点击玩家头颅后可移除权限"
 		);
 		gui.setItem(15, beacon);
@@ -596,8 +597,8 @@ public class ShanGui {
 		
 		ItemStack nameTag = createItem(Material.NAME_TAG, "§a添加全局权限",
 			"",
-			"§8&l- §6授权玩家可以打开你所有箱子",
-			"§8&l- §6但是依旧可以在单个箱子取消权限",
+			"§8&l- §6授权玩家可以打开你所有容器",
+			"§8&l- §6但是依旧可以在单个容器取消权限",
 			"§8&l- §6之后放置的也会自动授权权限",
 			"§8&l- §6点击玩家头颅添加授权权限"
 		);
@@ -605,7 +606,7 @@ public class ShanGui {
 		
 		ItemStack beacon = createItem(Material.BEACON, "§c删除全局权限",
 			"",
-			"§8&l- §6移除玩家打开你所有箱子权限",
+			"§8&l- §6移除玩家打开你所有容器权限",
 			"§8&l- §6会移除之前单独授权的权限",
 			"§8&l- §6点击玩家头颅后会移除权限"
 		);
