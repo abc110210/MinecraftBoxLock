@@ -497,7 +497,7 @@ public class ShanGui {
 	}
 	
 	// 单独权限设置GUI点击
-	public static void handleSinglePermissionClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<String, Set<UUID>> chestPermissions, Set<String> publicChests, Set<String> hopperEnabledChests) {
+	public static void handleSinglePermissionClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<String, Set<UUID>> chestPermissions, Set<String> publicChests, Set<String> hopperEnabledChests, Map<String, String> chestPasswords) {
 		switch (slot) {
 			case 11: 
 				openPermissionAddGui(player, chestBlock, chestOwners, chestPermissions);
@@ -506,13 +506,13 @@ public class ShanGui {
 				openPermissionRemoveGui(player, chestBlock, chestOwners, chestPermissions, 0);
 				break;
 			case 26: 
-				openBoxManageGui(player, chestBlock, chestOwners, publicChests, hopperEnabledChests);
+				openBoxManageGui(player, chestBlock, chestOwners, publicChests, hopperEnabledChests, chestPasswords);
 				break;
 		}
 	}
 	
 	// 全局权限设置GUI点击
-	public static void handleGlobalPermissionClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Set<UUID>> globalPermissions, Set<String> publicChests, Set<String> hopperEnabledChests) {
+	public static void handleGlobalPermissionClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Set<UUID>> globalPermissions, Set<String> publicChests, Set<String> hopperEnabledChests, Map<String, String> chestPasswords) {
 		switch (slot) {
 			case 11: 
 				openGlobalAddGui(player, chestBlock, chestOwners, globalPermissions);
@@ -521,7 +521,7 @@ public class ShanGui {
 				openGlobalRemoveGui(player, chestBlock, chestOwners, globalPermissions, 0);
 				break;
 			case 26: 
-				openBoxManageGui(player, chestBlock, chestOwners, publicChests, hopperEnabledChests);
+				openBoxManageGui(player, chestBlock, chestOwners, publicChests, hopperEnabledChests, chestPasswords);
 				break;
 		}
 	}

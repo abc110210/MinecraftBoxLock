@@ -29,8 +29,8 @@ public class ShanMeta {
 	/** 缓存有效期：14 天 */
 	private static final long CACHE_EXPIRY_TIME = 14L * 24 * 60 * 60 * 1000;
 	
-	/** 每分钟缓存一个头颅 */
-	private static final long CACHE_TASK_INTERVAL_TICKS = 20L * 60; // 60 秒
+	/** 每 10 分钟缓存一个头颅 */
+	private static final long CACHE_TASK_INTERVAL_TICKS = 20L * 60 * 10; // 600 秒
 	
 	// 持久化缓存：存储玩家头颅纹理数据
 	private static Map<UUID, CachedHead> headCache = new ConcurrentHashMap<>();
@@ -140,7 +140,7 @@ public class ShanMeta {
 	}
 	
 	/**
-	 * 启动定时缓存任务：每分钟缓存一个未缓存的本服玩家头颅
+	 * 启动定时缓存任务：每 10 分钟缓存一个未缓存的本服玩家头颅
 	 */
 	private static void startPeriodicCache() {
 		if (cacheTaskId != -1) {
