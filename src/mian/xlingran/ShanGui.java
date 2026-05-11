@@ -222,13 +222,12 @@ public class ShanGui {
 		// 从配置读取GUI设置
 		String guiTitle = guiConfig.getString("Rongqi.name", "&e箱子管理");
 		guiTitle = guiTitle.replace('&', '§');
-		int rows = guiConfig.getInt("Rongqi.rows", 3);
-		
-		Inventory gui = Bukkit.createInventory(null, rows * 9, guiTitle);
+		// 行数固定为 3 行，不可修改
+		Inventory gui = Bukkit.createInventory(null, GUI_ROWS * 9, guiTitle);
 		
 		// 填充黑色玻璃
 		ItemStack blackGlass = createItem(Material.BLACK_STAINED_GLASS_PANE, " ");
-		for (int i = 0; i < rows * 9; i++) {
+		for (int i = 0; i < GUI_ROWS * 9; i++) {
 			gui.setItem(i, blackGlass);
 		}
 		
@@ -286,7 +285,11 @@ public class ShanGui {
 			int slot = guiConfig.getInt("Rongqi.Lock.slot", 14);
 			Material material = Material.matchMaterial(materialStr);
 			if (material != null) {
-				String lockStatus = isPublic ? "§a公开" : "§c私有";
+				// 从 Variable 配置读取变量值
+				String lockStatus = isPublic ? 
+					guiConfig.getString("Variable.LockstatusOn", "&a公开") : 
+					guiConfig.getString("Variable.LockstatusOFF", "&c私有");
+				lockStatus = lockStatus.replace('&', '§');
 				ItemStack item = createGuiItemFromConfigWithVariable(guiConfig, "Rongqi.Lock", material, "Lockstatus", lockStatus);
 				gui.setItem(slot, item);
 			}
@@ -298,7 +301,11 @@ public class ShanGui {
 			int slot = guiConfig.getInt("Rongqi.Funnel.slot", 16);
 			Material material = Material.matchMaterial(materialStr);
 			if (material != null) {
-				String funnelStatus = isHopperEnabled ? "§a开" : "§c关";
+				// 从 Variable 配置读取变量值
+				String funnelStatus = isHopperEnabled ? 
+					guiConfig.getString("Variable.FunnelstatusOn", "&a开") : 
+					guiConfig.getString("Variable.FunnelstatusOFF", "&c关");
+				funnelStatus = funnelStatus.replace('&', '§');
 				ItemStack item = createGuiItemFromConfigWithVariable(guiConfig, "Rongqi.Funnel", material, "Funnelstatus", funnelStatus);
 				gui.setItem(slot, item);
 			}
@@ -310,8 +317,12 @@ public class ShanGui {
 			int slot = guiConfig.getInt("Rongqi.Password.slot", 20);
 			Material material = Material.matchMaterial(materialStr);
 			if (material != null) {
-				String passwordStatus = hasPassword ? "§a已设置" : "§c未设置";
-				ItemStack item = createGuiItemFromConfigWithVariable(guiConfig, "Rongqi.Password", material, "password", passwordStatus);
+				// 从 Variable 配置读取变量值
+				String passwordStatus = hasPassword ? 
+					guiConfig.getString("Variable.PasswordOn", "&a已设置") : 
+					guiConfig.getString("Variable.PasswordOFF", "&c未设置");
+				passwordStatus = passwordStatus.replace('&', '§');
+				ItemStack item = createGuiItemFromConfigWithVariable(guiConfig, "Rongqi.Password", material, "Password", passwordStatus);
 				gui.setItem(slot, item);
 			}
 		}
@@ -328,12 +339,12 @@ public class ShanGui {
 		}
 		
 		// 待开发功能
-		if (guiConfig.contains("Rongqi.Placeholder")) {
-			String materialStr = guiConfig.getString("Rongqi.Placeholder.material", "BARRIER");
-			int slot = guiConfig.getInt("Rongqi.Placeholder.slot", 24);
+		if (guiConfig.contains("Rongqi.Development")) {
+			String materialStr = guiConfig.getString("Rongqi.Development.material", "BARRIER");
+			int slot = guiConfig.getInt("Rongqi.Development.slot", 24);
 			Material material = Material.matchMaterial(materialStr);
 			if (material != null) {
-				ItemStack item = createGuiItemFromConfig(guiConfig, "Rongqi.Placeholder", material);
+				ItemStack item = createGuiItemFromConfig(guiConfig, "Rongqi.Development", material);
 				gui.setItem(slot, item);
 			}
 		}
@@ -341,8 +352,10 @@ public class ShanGui {
 		player.openInventory(gui);
 	}
 	
-	// 打开管理面板GUI (1行)
-	public static void openManagementPanelGui(Player player, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Boolean> playerDefaultPublicSettings, Map<UUID, Boolean> playerDefaultHopperSettings) {
+	/**
+	 * 默认管理面板GUI（硬编码后备方案）
+	 */
+	private static void openManagementPanelGuiDefault(Player player, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Boolean> playerDefaultPublicSettings, Map<UUID, Boolean> playerDefaultHopperSettings) {
 		Inventory gui = Bukkit.createInventory(null, MANAGEMENT_PANEL_ROWS * 9, MANAGEMENT_PANEL_TITLE);
 		
 		ItemStack blackGlass = createItem(Material.BLACK_STAINED_GLASS_PANE, " ");
@@ -383,8 +396,82 @@ public class ShanGui {
 		player.openInventory(gui);
 	}
 	
-	// 打开单独权限设置GUI (3行)
-	public static void openSinglePermissionGui(Player player, Block chestBlock, Map<String, UUID> chestOwners) {
+	// 打开管理面板GUI (1行)
+	public static void openManagementPanelGui(Player player, Block chestBlock, Map<String, UUID> chestOwners, Map<UUID, Boolean> playerDefaultPublicSettings, Map<UUID, Boolean> playerDefaultHopperSettings) {
+		// 如果配置文件未加载，使用默认硬编码
+		if (guiConfig == null) {
+			openManagementPanelGuiDefault(player, chestBlock, chestOwners, playerDefaultPublicSettings, playerDefaultHopperSettings);
+			return;
+		}
+		
+		// 从配置读取GUI设置
+		String guiTitle = guiConfig.getString("ManagePanel.name", "&b管理面板");
+		guiTitle = guiTitle.replace('&', '§');
+		
+		Inventory gui = Bukkit.createInventory(null, MANAGEMENT_PANEL_ROWS * 9, guiTitle);
+		
+		// 填充黑色玻璃
+		ItemStack blackGlass = createItem(Material.BLACK_STAINED_GLASS_PANE, " ");
+		for (int i = 0; i < MANAGEMENT_PANEL_ROWS * 9; i++) {
+			gui.setItem(i, blackGlass);
+		}
+		
+		// 获取当前玩家的状态
+		UUID ownerUUID = player.getUniqueId();
+		boolean isDefaultPublic = playerDefaultPublicSettings.getOrDefault(ownerUUID, false);
+		boolean isDefaultHopper = playerDefaultHopperSettings.getOrDefault(ownerUUID, false);
+		
+		// 从 Variable 配置读取变量值
+		String defaultBoxStatus = isDefaultPublic ? 
+			guiConfig.getString("Variable.DefaultBoxStatusOn", "&a公开") : 
+			guiConfig.getString("Variable.DefaultBoxStatusOFF", "&c私有");
+		defaultBoxStatus = defaultBoxStatus.replace('&', '§');
+		
+		String defaultFunnelStatus = isDefaultHopper ? 
+			guiConfig.getString("Variable.DefaultFunnelOn", "&a打开") : 
+			guiConfig.getString("Variable.DefaultFunnelOFF", "&c关闭");
+		defaultFunnelStatus = defaultFunnelStatus.replace('&', '§');
+		
+		// 默认公开/私有设置按钮
+		if (guiConfig.contains("ManagePanel.DeafultBox")) {
+			String materialStr = guiConfig.getString("ManagePanel.DeafultBox.material", "BOOK");
+			int slot = guiConfig.getInt("ManagePanel.DeafultBox.slot", 1);
+			Material material = Material.matchMaterial(materialStr);
+			if (material != null) {
+				ItemStack item = createGuiItemFromConfigWithVariable(guiConfig, "ManagePanel.DeafultBox", material, "DefaultBoxStatus", defaultBoxStatus);
+				gui.setItem(slot, item);
+			}
+		}
+		
+		// 默认漏斗设置按钮
+		if (guiConfig.contains("ManagePanel.DefaultFunnel")) {
+			String materialStr = guiConfig.getString("ManagePanel.DefaultFunnel.material", "HOPPER");
+			int slot = guiConfig.getInt("ManagePanel.DefaultFunnel.slot", 2);
+			Material material = Material.matchMaterial(materialStr);
+			if (material != null) {
+				ItemStack item = createGuiItemFromConfigWithVariable(guiConfig, "ManagePanel.DefaultFunnel", material, "DefaultFunnel", defaultFunnelStatus);
+				gui.setItem(slot, item);
+			}
+		}
+		
+		// 返回按钮
+		if (guiConfig.contains("ManagePanel.ManageBack")) {
+			String materialStr = guiConfig.getString("ManagePanel.ManageBack.material", "WHITE_STAINED_GLASS_PANE");
+			int slot = guiConfig.getInt("ManagePanel.ManageBack.slot", 8);
+			Material material = Material.matchMaterial(materialStr);
+			if (material != null) {
+				ItemStack item = createGuiItemFromConfig(guiConfig, "ManagePanel.ManageBack", material);
+				gui.setItem(slot, item);
+			}
+		}
+		
+		player.openInventory(gui);
+	}
+	
+	/**
+	 * 默认单独权限设置GUI（硬编码后备方案）
+	 */
+	private static void openSinglePermissionGuiDefault(Player player, Block chestBlock, Map<String, UUID> chestOwners) {
 		Inventory gui = Bukkit.createInventory(null, SINGLE_ROWS * 9, SINGLE_PERMISSION_TITLE);
 		
 		ItemStack blackGlass = createItem(Material.BLACK_STAINED_GLASS_PANE, " ");
@@ -404,8 +491,66 @@ public class ShanGui {
 		player.openInventory(gui);
 	}
 	
-	// 打开全局权限设置GUI (3行)
-	public static void openGlobalPermissionGui(Player player, Block chestBlock, Map<String, UUID> chestOwners) {
+	// 打开单独权限设置GUI (3行)
+	public static void openSinglePermissionGui(Player player, Block chestBlock, Map<String, UUID> chestOwners) {
+		// 如果配置文件未加载，使用默认硬编码
+		if (guiConfig == null) {
+			openSinglePermissionGuiDefault(player, chestBlock, chestOwners);
+			return;
+		}
+		
+		// 从配置读取GUI设置
+		String guiTitle = guiConfig.getString("IndPer.name", "&b单独权限设置");
+		guiTitle = guiTitle.replace('&', '§');
+		
+		Inventory gui = Bukkit.createInventory(null, SINGLE_ROWS * 9, guiTitle);
+		
+		// 填充黑色玻璃
+		ItemStack blackGlass = createItem(Material.BLACK_STAINED_GLASS_PANE, " ");
+		for (int i = 0; i < SINGLE_ROWS * 9; i++) {
+			gui.setItem(i, blackGlass);
+		}
+		
+		// 设置权限按钮
+		if (guiConfig.contains("IndPer.SetPer")) {
+			String materialStr = guiConfig.getString("IndPer.SetPer.material", "NAME_TAG");
+			int slot = guiConfig.getInt("IndPer.SetPer.slot", 11);
+			Material material = Material.matchMaterial(materialStr);
+			if (material != null) {
+				ItemStack item = createGuiItemFromConfig(guiConfig, "IndPer.SetPer", material);
+				gui.setItem(slot, item);
+			}
+		}
+		
+		// 取消权限按钮
+		if (guiConfig.contains("IndPer.DelPer")) {
+			String materialStr = guiConfig.getString("IndPer.DelPer.material", "BEACON");
+			int slot = guiConfig.getInt("IndPer.DelPer.slot", 15);
+			Material material = Material.matchMaterial(materialStr);
+			if (material != null) {
+				ItemStack item = createGuiItemFromConfig(guiConfig, "IndPer.DelPer", material);
+				gui.setItem(slot, item);
+			}
+		}
+		
+		// 返回按钮
+		if (guiConfig.contains("IndPer.IndPerBack")) {
+			String materialStr = guiConfig.getString("IndPer.IndPerBack.material", "WHITE_STAINED_GLASS_PANE");
+			int slot = guiConfig.getInt("IndPer.IndPerBack.slot", 26);
+			Material material = Material.matchMaterial(materialStr);
+			if (material != null) {
+				ItemStack item = createGuiItemFromConfig(guiConfig, "IndPer.IndPerBack", material);
+				gui.setItem(slot, item);
+			}
+		}
+		
+		player.openInventory(gui);
+	}
+	
+	/**
+	 * 默认全局权限设置GUI（硬编码后备方案）
+	 */
+	private static void openGlobalPermissionGuiDefault(Player player, Block chestBlock, Map<String, UUID> chestOwners) {
 		Inventory gui = Bukkit.createInventory(null, GLOBAL_ROWS * 9, GLOBAL_PERMISSION_TITLE);
 		
 		ItemStack blackGlass = createItem(Material.BLACK_STAINED_GLASS_PANE, " ");
@@ -421,6 +566,62 @@ public class ShanGui {
 		
 		ItemStack returnButton = createItem(Material.WHITE_STAINED_GLASS_PANE, "§8返回");
 		gui.setItem(26, returnButton);
+		
+		player.openInventory(gui);
+	}
+	
+	// 打开全局权限设置GUI (3行)
+	public static void openGlobalPermissionGui(Player player, Block chestBlock, Map<String, UUID> chestOwners) {
+		// 如果配置文件未加载，使用默认硬编码
+		if (guiConfig == null) {
+			openGlobalPermissionGuiDefault(player, chestBlock, chestOwners);
+			return;
+		}
+		
+		// 从配置读取GUI设置
+		String guiTitle = guiConfig.getString("GloPer.name", "&b全局权限设置");
+		guiTitle = guiTitle.replace('&', '§');
+		
+		Inventory gui = Bukkit.createInventory(null, GLOBAL_ROWS * 9, guiTitle);
+		
+		// 填充黑色玻璃
+		ItemStack blackGlass = createItem(Material.BLACK_STAINED_GLASS_PANE, " ");
+		for (int i = 0; i < GLOBAL_ROWS * 9; i++) {
+			gui.setItem(i, blackGlass);
+		}
+		
+		// 添加全局权限按钮
+		if (guiConfig.contains("GloPer.SetGloPer")) {
+			String materialStr = guiConfig.getString("GloPer.SetGloPer.material", "NAME_TAG");
+			int slot = guiConfig.getInt("GloPer.SetGloPer.slot", 11);
+			Material material = Material.matchMaterial(materialStr);
+			if (material != null) {
+				ItemStack item = createGuiItemFromConfig(guiConfig, "GloPer.SetGloPer", material);
+				gui.setItem(slot, item);
+			}
+		}
+		
+		// 删除全局权限按钮
+		if (guiConfig.contains("GloPer.DelGloPer")) {
+			String materialStr = guiConfig.getString("GloPer.DelGloPer.material", "BEACON");
+			int slot = guiConfig.getInt("GloPer.DelGloPer.slot", 15);
+			Material material = Material.matchMaterial(materialStr);
+			if (material != null) {
+				ItemStack item = createGuiItemFromConfig(guiConfig, "GloPer.DelGloPer", material);
+				gui.setItem(slot, item);
+			}
+		}
+		
+		// 返回按钮
+		if (guiConfig.contains("GloPer.GloPerBack")) {
+			String materialStr = guiConfig.getString("GloPer.GloPerBack.material", "WHITE_STAINED_GLASS_PANE");
+			int slot = guiConfig.getInt("GloPer.GloPerBack.slot", 26);
+			Material material = Material.matchMaterial(materialStr);
+			if (material != null) {
+				ItemStack item = createGuiItemFromConfig(guiConfig, "GloPer.GloPerBack", material);
+				gui.setItem(slot, item);
+			}
+		}
 		
 		player.openInventory(gui);
 	}

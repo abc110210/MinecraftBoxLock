@@ -805,6 +805,15 @@ public class Shan extends JavaPlugin implements Listener {
 			// 保存当前数据
 			saveChestData();
 			
+			// 关闭所有玩家打开的自定义GUI，防止重载后GUI失效
+			for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
+				String invTitle = onlinePlayer.getOpenInventory().getTitle();
+				if (invTitle != null && (invTitle.contains("箱子管理") || invTitle.contains("权限设置") || 
+					invTitle.contains("取消权限") || invTitle.contains("全局权限") || invTitle.contains("管理面板"))) {
+					onlinePlayer.closeInventory();
+				}
+			}
+			
 			// 清空所有内存数据
 			chestOwners.clear();
 			chestPermissions.clear();
