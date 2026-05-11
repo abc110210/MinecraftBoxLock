@@ -53,6 +53,8 @@ public class Shan extends JavaPlugin implements Listener {
 	private Map<UUID, Set<UUID>> globalPermissions = new HashMap<>();
 	private Set<String> publicChests = new HashSet<>(); // 公开的箱子（全服可打开但无法破坏）
 	private Set<String> hopperEnabledChests = new HashSet<>(); // 允许漏斗传输的箱子
+	private Map<String, String> chestPasswords = new HashMap<>(); // 密码箱的密码存储
+	private Set<UUID> waitingForPasswordInput = new HashSet<>(); // 等待输入密码的玩家
 	private File dataFile;
 	
 	private Set<UUID> guiOpeningPlayers = new HashSet<>();
@@ -229,6 +231,7 @@ public class Shan extends JavaPlugin implements Listener {
 			chestPermissions.remove(locationKey);
 			publicChests.remove(locationKey);
 			hopperEnabledChests.remove(locationKey);
+			chestPasswords.remove(locationKey);
 			saveChestData();
 		}
 	}
@@ -497,6 +500,11 @@ public class Shan extends JavaPlugin implements Listener {
 				writer.write("hopper:" + locationKey);
 				writer.newLine();
 			}
+			// 保存密码箱数据
+			for (Map.Entry<String, String> entry : chestPasswords.entrySet()) {
+				writer.write("password:" + entry.getKey() + "=" + entry.getValue());
+				writer.newLine();
+			}
 		} catch (IOException e) {
 			getLogger().log(Level.SEVERE, "无法保存箱子数据", e);
 		}
@@ -539,11 +547,17 @@ public class Shan extends JavaPlugin implements Listener {
 							// 加载漏斗传输状态
 							String locationKey = key.substring(7);
 							hopperEnabledChests.add(locationKey);
+						} else if (key.startsWith("password:")) {
+							// 加载密码箱数据
+							String[] parts2 = key.substring(9).split("=", 2);
+							if (parts2.length == 2) {
+								chestPasswords.put(parts2[0], parts2[1]);
+							}
 						}
 					}
 				}
 			}
-			getLogger().info("已加载 " + chestOwners.size() + " 个箱子的数据，" + globalPermissions.size() + " 个全局授权关系，" + publicChests.size() + " 个公开箱子，" + hopperEnabledChests.size() + " 个开启漏斗传输的箱子");
+			getLogger().info("已加载 " + chestOwners.size() + " 个箱子的数据，" + globalPermissions.size() + " 个全局授权关系，" + publicChests.size() + " 个公开箱子，" + hopperEnabledChests.size() + " 个开启漏斗传输的箱子，" + chestPasswords.size() + " 个密码箱");
 		} catch (IOException e) {
 			getLogger().log(Level.SEVERE, "无法加载箱子数据", e);
 		}

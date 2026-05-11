@@ -43,7 +43,7 @@ public class ShanGui {
 	private static final int RETURN_SLOT = 53;      // 返回按钮 (全局权限GUI使用)
 	
 	// 打开箱子管理GUI界面 (3行)
-	public static void openBoxManageGui(Player player, Block chestBlock, Map<String, UUID> chestOwners, Set<String> publicChests, Set<String> hopperEnabledChests) {
+	public static void openBoxManageGui(Player player, Block chestBlock, Map<String, UUID> chestOwners, Set<String> publicChests, Set<String> hopperEnabledChests, Map<String, String> chestPasswords) {
 		Inventory gui = Bukkit.createInventory(null, GUI_ROWS * 9, BOX_MANAGE_TITLE);
 		
 		ItemStack blackGlass = createItem(Material.BLACK_STAINED_GLASS_PANE, " ");
@@ -85,6 +85,18 @@ public class ShanGui {
 			"§e当前状态: " + hopperStatusColor
 		);
 		gui.setItem(16, hopper);
+		
+		// 密码箱按钮
+		boolean hasPassword = chestPasswords != null && chestPasswords.containsKey(locationKey);
+		String passwordStatus = hasPassword ? "§a已设置" : "§c未设置";
+		
+		ItemStack paper = createItem(Material.PAPER, "§3密码箱",
+			" ",
+			"§8§l- §6为箱子设置密码保护",
+			"§8§l- §6设置后所有玩家都需要输入密码才能打开",
+			"§e当前状态: " + passwordStatus
+		);
+		gui.setItem(20, paper);
 		
 		player.openInventory(gui);
 	}
@@ -423,7 +435,7 @@ public class ShanGui {
 	}
 	
 	// 箱子管理GUI点击
-	public static void handleBoxManageClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<String, Set<UUID>> chestPermissions, Map<UUID, Set<UUID>> globalPermissions, Set<String> publicChests, Set<String> hopperEnabledChests) {
+	public static void handleBoxManageClick(Player player, int slot, Block chestBlock, Map<String, UUID> chestOwners, Map<String, Set<UUID>> chestPermissions, Map<UUID, Set<UUID>> globalPermissions, Set<String> publicChests, Set<String> hopperEnabledChests, Map<String, String> chestPasswords) {
 		switch (slot) {
 			case 10: 
 				openSinglePermissionGui(player, chestBlock, chestOwners);
@@ -459,8 +471,26 @@ public class ShanGui {
 				}
 				// 刷新GUI
 				Bukkit.getScheduler().runTaskLater(plugin, () -> {
-					openBoxManageGui(player, chestBlock, chestOwners, publicChests, hopperEnabledChests);
+					openBoxManageGui(player, chestBlock, chestOwners, publicChests, hopperEnabledChests, chestPasswords);
 				}, 2L);
+				break;
+			}
+			case 20: {
+				// 密码箱设置/清除
+				String locationKey = getLocationKey(chestBlock);
+				if (chestPasswords.containsKey(locationKey)) {
+					// 已有密码，清除密码
+					chestPasswords.remove(locationKey);
+					player.sendMessage("§a已清除该箱子的密码保护");
+					// 刷新GUI
+					Bukkit.getScheduler().runTaskLater(plugin, () -> {
+						openBoxManageGui(player, chestBlock, chestOwners, publicChests, hopperEnabledChests, chestPasswords);
+					}, 2L);
+				} else {
+					// 没有密码，提示输入
+					player.sendMessage("§a请输入 §b4~8 位 §a密码（仅支持英文和数字）");
+					player.sendMessage("§a输入 §equit §a取消设置");
+				}
 				break;
 			}
 		}
