@@ -27,6 +27,7 @@
                 <includes>
                     <include>plugin.yml</include>
                     <include>Gui.yml</include>
+                    <include>Message.yml</include>
                 </includes>
             </resource>
         </resources>
