@@ -1014,10 +1014,10 @@ public class ShanGui {
 				String locationKey = getLocationKey(chestBlock);
 				if (publicChests.contains(locationKey)) {
 					publicChests.remove(locationKey);
-					player.sendMessage("§a已将箱子设置为 §c私有 §a状态");
+					MessageUtil.sendMessage(player, "LockDisable");
 				} else {
 					publicChests.add(locationKey);
-					player.sendMessage("§a已将箱子设置为 §a公开 §a状态，全服玩家可打开但无法破坏");
+					MessageUtil.sendMessage(player, "LockEnable");
 				}
 				// 刷新GUI
 				Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -1030,10 +1030,10 @@ public class ShanGui {
 				String locationKey = getLocationKey(chestBlock);
 				if (hopperEnabledChests.contains(locationKey)) {
 					hopperEnabledChests.remove(locationKey);
-					player.sendMessage("§a已 §c关闭 §a该箱子的漏斗传输");
+					MessageUtil.sendMessage(player, "FunnelDisable");
 				} else {
 					hopperEnabledChests.add(locationKey);
-					player.sendMessage("§a已 §a开启 §a该箱子的漏斗传输");
+					MessageUtil.sendMessage(player, "FunnelEnable");
 				}
 				// 刷新GUI
 				Bukkit.getScheduler().runTaskLater(plugin, () -> {
@@ -1047,14 +1047,14 @@ public class ShanGui {
 				if (chestPasswords.containsKey(locationKey)) {
 					// 已有密码，清除密码
 					chestPasswords.remove(locationKey);
-					player.sendMessage("§a已清除该箱子的密码保护");
+					MessageUtil.sendMessage(player, "PasswordBoxClear");
 					// 刷新GUI
 					Bukkit.getScheduler().runTaskLater(plugin, () -> {
 						openBoxManageGui(player, chestBlock, chestOwners, publicChests, hopperEnabledChests, chestPasswords, playerDefaultPublicSettings);
 					}, 2L);
 				} else {
 					// 没有密码，进入等待输入状态
-					player.sendMessage("§a请输入 §b4~8 位 §a密码（仅支持英文和数字，输入 §equit §a取消设置）");
+					MessageUtil.sendMessage(player, "PasswordBoxSet");
 								
 					// 标记玩家正在设置密码并记录对应的箱子位置
 					player.closeInventory();
@@ -1084,7 +1084,7 @@ public class ShanGui {
 			boolean currentDefault = playerDefaultPublicSettings.getOrDefault(ownerUUID, false);
 			boolean newDefault = !currentDefault;
 			playerDefaultPublicSettings.put(ownerUUID, newDefault);
-			player.sendMessage("§a已将新放置箱子的默认状态设置为 §" + (newDefault ? "a公开" : "c私有"));
+			MessageUtil.sendMessage(player, newDefault ? "DefaultPlaceDisable" : "DefaultPlaceEnable");
 			// 刷新管理面板GUI
 			Bukkit.getScheduler().runTaskLater(plugin, () -> {
 				openManagementPanelGui(player, chestBlock, chestOwners, playerDefaultPublicSettings, playerDefaultHopperSettings);
@@ -1094,7 +1094,7 @@ public class ShanGui {
 			boolean currentHopper = playerDefaultHopperSettings.getOrDefault(ownerUUID, false);
 			boolean newHopper = !currentHopper;
 			playerDefaultHopperSettings.put(ownerUUID, newHopper);
-			player.sendMessage("§a已将新放置容器的默认漏斗传输设置为 §" + (newHopper ? "a打开" : "c关闭"));
+			MessageUtil.sendMessage(player, newHopper ? "DefaultFunnelEnable" : "DefaultFunnelDisable");
 			// 刷新管理面板GUI
 			Bukkit.getScheduler().runTaskLater(plugin, () -> {
 				openManagementPanelGui(player, chestBlock, chestOwners, playerDefaultPublicSettings, playerDefaultHopperSettings);
@@ -1188,7 +1188,8 @@ public class ShanGui {
 							}
 						}
 						
-						player.sendMessage("§a成功对该玩家 " + playerName + " 添加所有箱子权限");
+						Map<String, String> vars = Map.of("player", playerName);
+						MessageUtil.sendMessage(player, "Globaladd", vars);
 						player.closeInventory();
 						return true;
 					}
@@ -1280,7 +1281,8 @@ public class ShanGui {
 							globalPermissions.remove(ownerUUID);
 						}
 						
-						player.sendMessage("§a成功对该玩家 " + playerName + " 取消所有箱子权限");
+						Map<String, String> vars = Map.of("player", playerName);
+						MessageUtil.sendMessage(player, "GlobalRemove", vars);
 						
 						// 刷新当前页面
 						int totalPages = Math.max(1, (int) Math.ceil((double) authorizedPlayers.size() / PLAYERS_PER_PAGE));
@@ -1326,7 +1328,8 @@ public class ShanGui {
 					OfflinePlayer targetPlayer = Bukkit.getOfflinePlayer(playerName);
 					if (targetPlayer != null && targetPlayer.getUniqueId() != null) {
 						allowedPlayers.add(targetPlayer.getUniqueId());
-						player.sendMessage("§a成功对该玩家 " + playerName + " 添加此箱子权限");
+						Map<String, String> vars = Map.of("player", playerName);
+						MessageUtil.sendMessage(player, "Individualadd", vars);
 						player.closeInventory();
 						return true;
 					}
@@ -1399,7 +1402,8 @@ public class ShanGui {
 					OfflinePlayer targetPlayer = Bukkit.getOfflinePlayer(playerName);
 					if (targetPlayer != null && targetPlayer.getUniqueId() != null) {
 						allowedPlayers.remove(targetPlayer.getUniqueId());
-						player.sendMessage("§c成功对该玩家 " + playerName + " 取消此箱子权限");
+						Map<String, String> vars = Map.of("player", playerName);
+						MessageUtil.sendMessage(player, "IndividualRemove", vars);
 						
 						// 刷新当前页面
 						int totalPages = Math.max(1, (int) Math.ceil((double) allowedPlayers.size() / PLAYERS_PER_PAGE));
