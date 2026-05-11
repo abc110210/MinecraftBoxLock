@@ -2,80 +2,100 @@
 # 箱子管理Gui
 Rongqi: 
     # 箱子管理Gui标题
-    name: "&e箱子管理"
+    name: "&d容器管理"
     Alone:
         material: PLAYER_HEAD
         slot: 10
         # 名称
-        name: "&e单独权限"
+        name: "&b独立权限"
         # Lore
         Lore:
-            - "&8&l- &6给予玩家可以打开该箱子"
-            - "&8&l- &6对单个箱子权限设置"
+            - ""
+            - "&8&l- &6授权的玩家可以打开这个容器"
+            - "&8&l- &6对单容器的设置"
     Global:
         material: WHEAT
         slot: 12
         name: "&b全局权限设置"
         Lore:
-            - "&8&l- &6有权限的玩家可以打开你所有的箱子"
-            - "&8&l- &6对你箱子所有权限设置"
+            - ""
+            - "&8&l- &6授权玩家可以打开你所有的容器"
+            - "&8&l- &6对所有容器设置"
     Lock:
         material: CHEST
         slot: 14
-        name: "&9锁定开关"
+        name: "&b锁定开关"
         Lore:
-            - "&8&l- &6在这里切换你的箱子状态"
-            - "&b私有 &8&l- &6拥有权限的玩家才能打开"
-            - "&b公开 &8&l- &6所有的玩家都可以打开你的箱子"
-            - "&e当前状态: {Lockstatus}"
+            - ""
+            - "&3私有 &8&l- &6拥有权限的玩家才能打开"
+            - "&3公开 &8&l- &6所有的玩家都可以打开你的容器"
+            - "&8&l- &6点击切换你的容器状态"
+            - "&8&l- &6容器公开后只能打开，不能破坏"
+            - ""
+            - "&9当前状态: {Lockstatus}"
     Funnel:
         material: HOPPER
         slot: 16
         name: "&b漏斗开关"
         Lore:
+            - ""
             - "&8&l- &6打开和关闭漏斗传输"
-            - "&e当前状态: {Funnelstatus}"
+            - "&8&l- &6点击切换开关"
+            - ""
+            - "&9当前状态: {Funnelstatus}"
     Password:
         material: PAPER
         slot: 20
-        name: "&3密码箱"
+        name: "&b密码箱"
         Lore:
+            - ""
             - "&8&l- &6为箱子设置密码保护"
-            - "&8&l- &6设置后所有玩家都需要输入密码才能打开"
-            - "&e当前状态: {Password}"
+            - "&8&l- &6设置后有密码的玩家可以打开"
+            - "&8&l- &6会绕过授权"
+            - ""
+            - "&9当前状态: {Password}"
     Manage:
         material: REPEATER
         slot: 22
         name: "&b管理面板"
         Lore:
-            - "&8&l- &6管理你的默认箱子设置"
+            - ""
+            - "&8&l- &6管理容器默认设置"
+            - "&8&l- &6新放置的容器将按照设置的模式"
+            - "&8&l- &6默认都是 &c关闭 &6的"
     Development:
         material: BARRIER
         slot: 24
-        name: "&c待开发"
+        name: "&b待开发"
         Lore:
-            - ""
+            - "&8目前未开放"
 #单独权限设置Gui
 IndPer:
-    name: "&b单独权限设置"
+    name: "&b独立权限设置"
     SetPer:
         material: NAME_TAG
         slot: 11
         name: "&a设置权限"
         Lore:
             - ""
+            - "&8&l- &6对单个容器的权限添加"
+            - "&8&l- &6点击玩家头颅后可添加权限"
+            - "&8&l- &6被添加权限的玩家可破坏你的容器"
     DelPer:
         material: BEACON
         slot: 15
         name: "&c取消权限"
         Lore:
             - ""
+            - "&8&l- &6对单个容器的权限移除"
+            - "&8&l- &6点击玩家头颅后可移除权限"
     IndPerBack:
         material: WHITE_STAINED_GLASS_PANE
         slot: 26
-        name: "&8返回"
+        name: "&f返回"
         Lore:
             - ""
+            - "&8返回上一级菜单"
 # 全局权限设置Gui
 GloPer:
     name: "&b全局权限设置"
@@ -85,46 +105,57 @@ GloPer:
         name: "&a添加全局权限"
         Lore:
             - ""
+            - "&8&l- &6授权玩家可以打开你所有容器"
+            - "&8&l- &6但是依旧可以在单个容器取消权限"
+            - "&8&l- &6之后放置的也会自动授权权限"
+            - "&8&l- &6点击玩家头颅添加授权权限"
     DelGloPer:
         material: BEACON
         slot: 15
         name: "&c删除全局权限"
         Lore:
             - ""
+            - "&8&l- &6移除玩家打开你所有容器权限"
+            - "&8&l- &6会移除之前单独授权的权限"
+            - "&8&l- &6点击玩家头颅后会移除权限"
     GloPerBack:
         material: WHITE_STAINED_GLASS_PANE
         slot: 26
-        name: "&8返回"
+        name: "&f返回"
         Lore:
             - ""
+            - "&8返回上一级菜单"
 # 管理面板Gui
 ManagePanel:
     name: "&b管理面板"
     DeafultBox:
         material: BOOK
         slot: 1
-        name: "&b默认公开/私有设置"
+        name: "&b默认 &e公开/私有 &b设置"
         Lore:
             - ""
-            - "&3私有&8&l- &6你新放置的箱子默认为私有"
-            - "&3公开&8&l- &6你新放置的箱子默认为公开"
-            - "&e当前默认状态: {DefaultBoxStatus}"
+            - "&3私有 &8&l- &6新放置的容器默认为私有"
+            - "&3公开 &8&l- &6新放置的容器默认为公开"
+            - ""
+            - "&9当前默认状态: {DefaultBoxStatus}"
     DefaultFunnel:
         material: HOPPER
         slot: 2
-        name: "&a默认漏斗设置"
+        name: "&b默认 &e漏斗开关 &b设置"
         Lore:
             - ""
+            - "&3打开 &8&l- &6新放置的容器默认打开漏斗传输"
+            - "&3关闭 &8&l- &6新放置的容器默认关闭漏斗传输"
             - "&8&l- &6默认漏斗开关"
-            - "&8&l打开- &6新放置的容器默认打开漏斗传输"
-            - "&8&l关闭- &6新放置的容器默认关闭漏斗传输"
+            - ""
             - "&e当前状态: {DefaultFunnel}"
     ManageBack:
         material: WHITE_STAINED_GLASS_PANE
         slot: 8
-        name: "&8返回"
+        name: "&f返回"
         Lore:
             - ""
+            - "&8点击返回上一级菜单"
 
 # 变量设置
 Variable:
@@ -132,8 +163,8 @@ Variable:
     LockstatusOn: "&a公开"
     LockstatusOFF: "&c私有"
     # 漏斗开关变量
-    FunnelstatusOn: "&a开"
-    FunnelstatusOFF: "&c关"
+    FunnelstatusOn: "&a打开"
+    FunnelstatusOFF: "&c关闭"
     # 密码箱变量
     PasswordOn: "&a已设置"
     PasswordOFF: "&c未设置"

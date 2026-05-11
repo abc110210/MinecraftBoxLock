@@ -2,6 +2,7 @@ name: MinecraftboxLock
 main: mian.xlingran.Shan
 version: 1.2
 api-version: 1.21
+author: Shan
 
 commands:
   xlr:
