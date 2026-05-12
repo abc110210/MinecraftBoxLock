@@ -6,8 +6,8 @@ author: Shan
 
 commands:
   xlr:
-    description: 将您所有的箱子权限授予指定玩家（包括新箱子）
-    usage: /xlr <玩家名称>
+    description: 箱子锁管理指令
+    usage: /xlr [reload|unlock|<玩家ID>]
   xlrdel:
     description: 取消指定玩家对您所有箱子的权限
     usage: /xlrdel <玩家名称>
