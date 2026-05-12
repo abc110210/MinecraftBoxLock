@@ -35,7 +35,7 @@
 |/xlrdel <玩家ID>|无|取消全局授权|
 |/xlr unlock|xlingran.admin|管理员绕过模式|
 |/xlr reload|xlr.reload|重载插件|
-全局授权的玩家可以你的箱子
+|全局授权的玩家可以你的箱子|
 ## 如何使用
 - 将文件放到服务器的Plugins文件夹里面
 ## 更新日志
