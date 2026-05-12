@@ -67,6 +67,7 @@ public class Shan extends JavaPlugin implements Listener {
 	private Map<UUID, Map.Entry<String, String>> verifiedPasswordChests = new HashMap<>(); // 已通过密码验证的玩家（临时权限）：存储 箱子位置 和 验证时的密码
 	private Map<UUID, Boolean> playerDefaultPublicSettings = new HashMap<>(); // 玩家默认新箱子公开/私有设置：true=公开, false/null=私有
 	private Map<UUID, Boolean> playerDefaultHopperSettings = new HashMap<>(); // 玩家默认新箱子漏斗传输设置：true=打开, false/null=关闭
+	private Set<UUID> bypassPlayers = new HashSet<>(); // 管理员绕过模式的玩家列表
 	private File dataFile;
 	
 	private Set<UUID> guiOpeningPlayers = new HashSet<>();
@@ -314,6 +315,12 @@ public class Shan extends JavaPlugin implements Listener {
 		UUID ownerUUID = chestOwners.get(locationKey);
 		
 		if (ownerUUID == null) {
+			return;
+		}
+		
+		// 检查是否是绕过模式的玩家
+		if (bypassPlayers.contains(player.getUniqueId())) {
+			MessageUtil.sendMessage(player, "BypassOpenBox");
 			return;
 		}
 		
@@ -854,49 +861,76 @@ public class Shan extends JavaPlugin implements Listener {
 		
 		Player player = (Player) sender;
 		
-		// 处理 reload 指令
-		if (label.equalsIgnoreCase("xlr") && args.length == 1 && args[0].equalsIgnoreCase("reload")) {
-			// 检查权限（OP 或有权限节点）
-			if (!player.hasPermission("xlr.reload") && !player.isOp()) {
-				MessageUtil.sendMessage(player, "CommandNoPermission");
+		// 处理 reload 和 unlock 子指令
+		if (label.equalsIgnoreCase("xlr") && args.length >= 1) {
+			// 处理 reload 指令
+			if (args[0].equalsIgnoreCase("reload")) {
+				// 检查权限（OP 或有权限节点）
+				if (!player.hasPermission("xlr.reload") && !player.isOp()) {
+					MessageUtil.sendMessage(player, "CommandNoPermission");
+					return true;
+				}
+				
+				// 保存当前数据
+				saveChestData();
+				
+				// 关闭所有玩家打开的自定义GUI，防止重载后GUI失效
+				for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
+					String invTitle = onlinePlayer.getOpenInventory().getTitle();
+					if (invTitle != null && (invTitle.contains("管理") || invTitle.contains("权限") || 
+						invTitle.contains("锁定") || invTitle.contains("漏斗") || invTitle.contains("密码"))) {
+						onlinePlayer.closeInventory();
+					}
+				}
+				
+				// 清空所有内存数据
+				chestOwners.clear();
+				chestPermissions.clear();
+				globalPermissions.clear();
+				publicChests.clear();
+				hopperEnabledChests.clear();
+				chestPasswords.clear();
+				playerDefaultPublicSettings.clear();
+				playerDefaultHopperSettings.clear();
+				
+				// 重新加载GUI配置
+				ShanGui.loadGuiConfig(this);
+				// 重新加载消息配置
+				MessageUtil.reloadMessages();
+				
+				// 重新加载数据
+				loadChestData();
+				
+				MessageUtil.sendMessage(player, "CommandReloadSuccess");
 				return true;
 			}
 			
-			// 保存当前数据
-			saveChestData();
-			
-			// 关闭所有玩家打开的自定义GUI，防止重载后GUI失效
-			// 通过检查标题是否包含特定关键词来识别自定义GUI
-			for (Player onlinePlayer : Bukkit.getOnlinePlayers()) {
-				String invTitle = onlinePlayer.getOpenInventory().getTitle();
-				if (invTitle != null && (invTitle.contains("管理") || invTitle.contains("权限") || 
-					invTitle.contains("锁定") || invTitle.contains("漏斗") || invTitle.contains("密码"))) {
-					onlinePlayer.closeInventory();
+			// 处理 unlock 子指令（管理员绕过模式）
+			if (args[0].equalsIgnoreCase("unlock")) {
+				// 检查权限
+				if (!player.hasPermission("xlingran.admin") && !player.isOp()) {
+					MessageUtil.sendMessage(player, "CommandNoPermission");
+					return true;
 				}
+				
+				UUID playerUUID = player.getUniqueId();
+				
+				// 切换绕过模式
+				if (bypassPlayers.contains(playerUUID)) {
+					// 关闭绕过模式
+					bypassPlayers.remove(playerUUID);
+					MessageUtil.sendMessage(player, "BypassDisable");
+				} else {
+					// 开启绕过模式
+					bypassPlayers.add(playerUUID);
+					MessageUtil.sendMessage(player, "BypassEnable");
+				}
+				
+				return true;
 			}
-			
-			// 清空所有内存数据
-			chestOwners.clear();
-			chestPermissions.clear();
-			globalPermissions.clear();
-			publicChests.clear();
-			hopperEnabledChests.clear();
-			chestPasswords.clear();
-			playerDefaultPublicSettings.clear();
-			playerDefaultHopperSettings.clear();
-			
-			// 重新加载GUI配置
-			ShanGui.loadGuiConfig(this);
-			// 重新加载消息配置
-			MessageUtil.reloadMessages();
-			
-			// 重新加载数据
-			loadChestData();
-			
-			MessageUtil.sendMessage(player, "CommandReloadSuccess");
-			return true;
 		}
 		
+		// 处理 /xlr <玩家> 指令
 		if (args.length != 1) {
 			if (label.equalsIgnoreCase("xlr")) {
 				MessageUtil.sendMessage(player, "CommandUsageXlr");
@@ -904,9 +938,6 @@ public class Shan extends JavaPlugin implements Listener {
 			} else if (label.equalsIgnoreCase("xlrdel")) {
 				MessageUtil.sendMessage(player, "CommandUsageXlrdel");
 				MessageUtil.sendMessage(player, "CommandUsageXlrdelDesc");
-			} else if (label.equalsIgnoreCase("xlr") && args.length > 0) {
-				// 如果参数存在但不是 reload（前面已处理）
-				MessageUtil.sendMessage(player, "CommandUsageXlr");
 			}
 			return true;
 		}
@@ -990,7 +1021,7 @@ public class Shan extends JavaPlugin implements Listener {
 			Map<String, String> vars = Map.of("player", targetPlayer.getName());
 			MessageUtil.sendMessage(player, "CommandGlobalRemoveSuccess", vars);
 		}
-		
+			
 		return true;
 	}
 	
