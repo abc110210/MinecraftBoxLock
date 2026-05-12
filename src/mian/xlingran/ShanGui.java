@@ -28,6 +28,9 @@ public class ShanGui {
 		plugin = p;
 	}
 	
+	/**
+	 * 加载GUI配置文件
+	 */
 	public static void loadGuiConfig(Plugin plugin) {
 		File guiFile = new File(plugin.getDataFolder(), "Gui.yml");
 		if (guiFile.exists()) {
@@ -35,6 +38,10 @@ public class ShanGui {
 		}
 	}
 	
+	/**
+	 * 检查玩家是否在冷却中
+	 * @return true 表示在冷却中，false 表示可以点击
+	 */
 	private static boolean isOnCooldown(Player player) {
 		UUID playerUUID = player.getUniqueId();
 		long currentTime = System.currentTimeMillis();
@@ -75,6 +82,9 @@ public class ShanGui {
 	private static final int NEXT_PAGE_SLOT = 51;   // 下一页按钮 (倒数第3格, 黄绿色玻璃)
 	private static final int RETURN_SLOT = 53;      // 返回按钮 (全局权限GUI使用)
 	
+	/**
+	 * 从配置文件创建GUI物品（不含变量替换）
+	 */
 	private static ItemStack createGuiItemFromConfig(YamlConfiguration config, String path, Material material) {
 		ItemStack item = new ItemStack(material);
 		ItemMeta meta = item.getItemMeta();
@@ -101,6 +111,11 @@ public class ShanGui {
 		return item;
 	}
 	
+	/**
+	 * 从配置文件创建GUI物品（含变量替换）
+	 * @param variableName 变量名，如 "Lockstatus"
+	 * @param variableValue 变量值，如 "§a公开"
+	 */
 	private static ItemStack createGuiItemFromConfigWithVariable(YamlConfiguration config, String path, Material material, String variableName, String variableValue) {
 		ItemStack item = new ItemStack(material);
 		ItemMeta meta = item.getItemMeta();
@@ -129,6 +144,9 @@ public class ShanGui {
 		return item;
 	}
 	
+	/**
+	 * 默认箱子管理GUI（硬编码后备方案）
+	 */
 	private static void openBoxManageGuiDefault(Player player, Block chestBlock, Map<String, UUID> chestOwners, Set<String> publicChests, Set<String> hopperEnabledChests, Map<String, String> chestPasswords) {
 		Inventory gui = Bukkit.createInventory(null, GUI_ROWS * 9, "§d容器管理");
 		

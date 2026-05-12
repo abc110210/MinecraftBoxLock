@@ -14,6 +14,13 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 
+/**
+ * 玩家头颅缓存管理器
+ * - 每分钟缓存一个未缓存的玩家头颅
+ * - 缓存有效期 14 天
+ * - 仅缓存本服玩家头颅
+ * - 纹理数据持久化到本地文件
+ */
 public class ShanMeta {
 	
 	private static Plugin plugin;
@@ -49,6 +56,9 @@ public class ShanMeta {
 		startPeriodicCache();
 	}
 	
+	/**
+	 * 创建带缓存的玩家头颅（优先使用本地缓存，完全不联网）
+	 */
 	public static ItemStack createCachedPlayerHead(OfflinePlayer player, String displayName) {
 		if (player == null) {
 			return createEmptyHead(displayName);
@@ -66,6 +76,9 @@ public class ShanMeta {
 		return createEmptyHead(displayName);
 	}
 	
+	/**
+	 * 通过玩家名称创建头颅
+	 */
 	public static ItemStack createCachedPlayerHeadByName(String playerName, String displayName) {
 		for (Map.Entry<UUID, CachedHead> entry : headCache.entrySet()) {
 			CachedHead value = entry.getValue();
@@ -78,6 +91,9 @@ public class ShanMeta {
 		return createEmptyHead(displayName);
 	}
 	
+	/**
+	 * 从纹理数据创建头颅（完全不联网）
+	 */
 	private static ItemStack createHeadFromTexture(CachedHead cachedHead, String displayName) {
 		try {
 			ItemStack head = new ItemStack(org.bukkit.Material.PLAYER_HEAD);
@@ -110,6 +126,9 @@ public class ShanMeta {
 		}
 	}
 	
+	/**
+	 * 创建空头颅（默认 Steve 皮肤）
+	 */
 	private static ItemStack createEmptyHead(String displayName) {
 		ItemStack head = new ItemStack(org.bukkit.Material.PLAYER_HEAD);
 		SkullMeta meta = (SkullMeta) head.getItemMeta();
@@ -120,6 +139,9 @@ public class ShanMeta {
 		return head;
 	}
 	
+	/**
+	 * 启动定时缓存任务：每 10 分钟缓存一个未缓存的本服玩家头颅
+	 */
 	private static void startPeriodicCache() {
 		if (cacheTaskId != -1) {
 			Bukkit.getScheduler().cancelTask(cacheTaskId);
@@ -134,6 +156,9 @@ public class ShanMeta {
 		}, CACHE_TASK_INTERVAL_TICKS, CACHE_TASK_INTERVAL_TICKS).getTaskId();
 	}
 	
+	/**
+	 * 缓存一个尚未缓存（或已过期）的本服在线玩家头颅
+	 */
 	private static void cacheOnePlayerHead() {
 		for (Player player : Bukkit.getOnlinePlayers()) {
 			UUID playerUUID = player.getUniqueId();
@@ -173,6 +198,9 @@ public class ShanMeta {
 		}
 	}
 	
+	/**
+	 * 从 PlayerProfile 提取纹理 value
+	 */
 	private static String extractTextureValue(org.bukkit.profile.PlayerProfile profile, String debugName) {
 		try {
 			if (profile == null) {
@@ -194,10 +222,16 @@ public class ShanMeta {
 		return null;
 	}
 	
+	/**
+	 * 检查时间戳是否过期
+	 */
 	private static boolean isExpired(long timestamp) {
 		return System.currentTimeMillis() - timestamp > CACHE_EXPIRY_TIME;
 	}
 	
+	/**
+	 * 手动清除所有缓存
+	 */
 	public static synchronized void clearCache() {
 		headCache.clear();
 		if (cacheFile.exists()) {
@@ -206,6 +240,9 @@ public class ShanMeta {
 		plugin.getLogger().info("已清除所有头颅缓存");
 	}
 	
+	/**
+	 * 保存缓存到文件
+	 */
 	private static synchronized void saveCache(Map<UUID, CachedHead> dataToSave) {
 		try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(cacheFile))) {
 			oos.writeObject(dataToSave);
@@ -215,6 +252,9 @@ public class ShanMeta {
 		}
 	}
 	
+	/**
+	 * 从文件加载缓存
+	 */
 	@SuppressWarnings("unchecked")
 	private static void loadCache() {
 		if (!cacheFile.exists()) {
@@ -247,6 +287,9 @@ public class ShanMeta {
 		}
 	}
 	
+	/**
+	 * 获取缓存统计信息
+	 */
 	public static String getCacheStats() {
 		int validCount = 0;
 		int expiredCount = 0;

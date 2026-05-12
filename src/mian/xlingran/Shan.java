@@ -36,13 +36,13 @@ public class Shan extends JavaPlugin implements Listener {
 		return instance;
 	}
 	
-	
+	// 静态初始化块：在类加载时强制设置 UTF-8 编码，解决 Windows CMD 乱码
 	static {
 		try {
 			System.setProperty("file.encoding", "UTF-8");
 			System.setProperty("sun.jnu.encoding", "UTF-8");
 			
-			
+			// 尝试修改控制台 Handler 的编码
 			java.util.logging.Logger rootLogger = java.util.logging.Logger.getLogger("");
 			for (Handler handler : rootLogger.getHandlers()) {
 				if (handler instanceof ConsoleHandler) {
@@ -50,7 +50,7 @@ public class Shan extends JavaPlugin implements Listener {
 				}
 			}
 		} catch (Exception e) {
-			
+			// 忽略编码设置失败
 		}
 	}
 	
@@ -81,7 +81,7 @@ public class Shan extends JavaPlugin implements Listener {
 		ShanMeta.init(this); // 初始化头颅缓存系统
 		Bukkit.getPluginManager().registerEvents(this, this);
 		
-		// 指令
+		// 注册指令
 		this.getCommand("xlr").setExecutor(this);
 		this.getCommand("xlrdel").setExecutor(this);
 		
@@ -90,6 +90,7 @@ public class Shan extends JavaPlugin implements Listener {
 			getDataFolder().mkdirs();
 		}
 		
+		// 释放配置文件到插件目录
 		saveResource("Gui.yml", false);
 		saveResource("Message.yml", false);
 		
@@ -104,17 +105,24 @@ public class Shan extends JavaPlugin implements Listener {
 		// 加载数据
 		loadChestData();
 		
-		getLogger().info("§a欢迎使用 §b箱子锁 §a插件,交流群: 943446220");
+		// 控制台输出（使用 § 符号）
+		getLogger().info("§a欢迎使用 §b箱子锁 §a插件，交流群: 943446220");
 	}
 	
 	@Override
 	public void onDisable() {
 		// 保存
 		saveChestData();
+		// 控制台输出（使用 § 符号）
 		getLogger().info("§c箱子锁插件已卸载，交流群: 943446220");
 	}
 	
+	/**
+	 * 设置控制台编码，解决 Windows 乱码问题
+	 * @param message 要输出的消息（会自动移除 § 颜色代码）
+	 */
 	private void logInfo(String message) {
+		// 移除颜色代码，避免 CMD 编码冲突
 		String cleanMessage = message.replace("§a", "")
 		                              .replace("§b", "")
 		                              .replace("§c", "")
@@ -129,12 +137,13 @@ public class Shan extends JavaPlugin implements Listener {
 		getLogger().info(cleanMessage);
 	}
 	
-	//防止事件
+	//监听防止事件
 	@EventHandler
 	public void onPlayerJoin(org.bukkit.event.player.PlayerJoinEvent event) {
+		// 新的头颅缓存系统使用定时任务自动缓存，无需手动预缓存
 	}
 
-	// 聊天输入密码
+	// 监听聊天输入密码（设置密码 - 主人）
 	@EventHandler
 	public void onPlayerChat(org.bukkit.event.player.AsyncPlayerChatEvent event) {
 		Player player = event.getPlayer();
@@ -171,6 +180,7 @@ public class Shan extends JavaPlugin implements Listener {
 		playerPendingPasswordChests.remove(player.getUniqueId());
 		MessageUtil.sendMessage(player, "PasswordBoxSetSaved");
 
+		// 刷新 GUI (异步事件需切回主线程)
 		Bukkit.getScheduler().runTask(this, () -> {
 			Block chestBlock = parseBlockLocation(player, chestLocation);
 			if (chestBlock != null) {
@@ -179,6 +189,7 @@ public class Shan extends JavaPlugin implements Listener {
 		});
 	}
 
+	// 监听打开密码箱时的密码输入（路人）
 	@EventHandler
 	public void onPlayerOpenPasswordChest(org.bukkit.event.player.AsyncPlayerChatEvent event) {
 		Player player = event.getPlayer();
@@ -215,6 +226,9 @@ public class Shan extends JavaPlugin implements Listener {
 		}
 	}
 
+	/**
+	 * 设置玩家等待输入密码的状态（主人设置密码）
+	 */
 	public void setPasswordInputState(UUID playerUUID, String locationKey) {
 		waitingForPasswordSet.add(playerUUID);
 		playerPendingPasswordChests.put(playerUUID, locationKey);
@@ -230,14 +244,17 @@ public class Shan extends JavaPlugin implements Listener {
 			UUID ownerUUID = player.getUniqueId();
 			chestOwners.put(locationKey, ownerUUID);
 			
+			// 自动应用全局授权 - 将所有者已授权的所有玩家添加到此新箱子
 			Set<UUID> globallyAuthorized = globalPermissions.get(ownerUUID);
 			if (globallyAuthorized != null && !globallyAuthorized.isEmpty()) {
 				Set<UUID> chestPerms = chestPermissions.computeIfAbsent(locationKey, k -> new HashSet<>());
 				chestPerms.addAll(globallyAuthorized);
 			}
 			
+			// 应用玩家的默认公开/私有设置
 			Boolean defaultPublic = playerDefaultPublicSettings.get(ownerUUID);
 			if (defaultPublic != null && defaultPublic) {
+				// 如果玩家设置为默认公开，则新箱子自动设为公开
 				publicChests.add(locationKey);
 				MessageUtil.sendMessage(player, "PlacePubBox");
 			} else {
@@ -276,12 +293,12 @@ public class Shan extends JavaPlugin implements Listener {
 			return;
 		}
 		
-		// 箱子主人直接允许打开
+		// 箱子主人直接允许打开（密码箱对主人无效）
 		if (ownerUUID.equals(player.getUniqueId())) {
 			return;
 		}
 		
-		// 密码箱优先如果箱子设置了密码
+		// 密码箱优先：如果箱子设置了密码
 		if (chestPasswords.containsKey(locationKey)) {
 			String currentPassword = chestPasswords.get(locationKey);
 			
@@ -303,17 +320,20 @@ public class Shan extends JavaPlugin implements Listener {
 			// 未通过密码验证或密码已修改，拦截并提示输入密码
 			event.setCancelled(true);
 							
+			// 判断是否是密码修改后的第一次打开
 			if (isPasswordModified) {
 				MessageUtil.sendMessage(player, "PasswordBoxChange");
 			} else {
 				MessageUtil.sendMessage(player, "PasswordBoxOpen");
 			}
 					
+			// 进入等待输入密码状态（路人打开箱子）
 			waitingForPasswordOpen.add(player.getUniqueId());
 			playerPendingPasswordChests.put(player.getUniqueId(), locationKey);
 			return;
 		}
 		
+		// 非密码箱，走原有权限检查逻辑
 		if (!hasChestPermission(locationKey, player)) {
 			event.setCancelled(true);
 			MessageUtil.sendMessage(player, "LockBox");
@@ -346,12 +366,14 @@ public class Shan extends JavaPlugin implements Listener {
 		}
 	}
 	
+	// 监听爆炸事件，防止被上锁的容器被爆炸破坏
 	@EventHandler(priority = EventPriority.HIGHEST)
 	public void onEntityExplode(EntityExplodeEvent event) {
 		if (event.isCancelled()) {
 			return;
 		}
 		
+		// 遍历所有被爆炸影响的方块
 		event.blockList().removeIf(block -> {
 			if (!isChest(block.getType())) {
 				return false;
@@ -360,8 +382,9 @@ public class Shan extends JavaPlugin implements Listener {
 			String locationKey = getLocationKey(block);
 			UUID ownerUUID = chestOwners.get(locationKey);
 			
+			// 如果容器有所有者（包括公开和私有），则保护不被爆炸破坏
 			if (ownerUUID != null) {
-				return true; 
+				return true; // 从爆炸列表中移除，保护该方块
 			}
 			
 			return false;

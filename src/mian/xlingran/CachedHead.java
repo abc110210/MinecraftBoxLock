@@ -3,16 +3,23 @@ package mian.xlingran;
 import java.io.*;
 import java.util.UUID;
 
-/* 头颅相关 */
+/**
+ * 缓存的头颅数据结构
+ * 包含玩家 UUID、名称、纹理数据和时间戳
+ */
 public class CachedHead implements Serializable {
 	private static final long serialVersionUID = 3L;
 	
+	/** 玩家UUID */
 	private UUID uuid;
 	
+	/** 玩家名称 */
 	private String playerName;
 	
+	/** Mojang 纹理 value（base64） */
 	private String textureValue;
 	
+	/** 缓存时间戳 */
 	private long timestamp;
 	
 	public CachedHead(UUID uuid, String playerName, String textureValue, long timestamp) {
@@ -42,6 +49,9 @@ public class CachedHead implements Serializable {
 		this.timestamp = timestamp;
 	}
 	
+	/**
+	 * 是否有完整的纹理数据
+	 */
 	public boolean hasTexture() {
 		return textureValue != null && !textureValue.isEmpty();
 	}
