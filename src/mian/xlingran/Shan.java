@@ -105,16 +105,40 @@ public class Shan extends JavaPlugin implements Listener {
 		// 加载数据
 		loadChestData();
 		
-		// 控制台输出（使用 § 符号）
-		getLogger().info("§a欢迎使用 §b箱子锁 §a插件，交流群: 943446220");
+		// 控制台输出（将 § 颜色代码转换为 ANSI）
+		getLogger().info(convertToAnsi("§a欢迎使用 §b箱子锁 §a插件，交流群: 943446220"));
 	}
 	
 	@Override
 	public void onDisable() {
 		// 保存
 		saveChestData();
-		// 控制台输出（使用 § 符号）
-		getLogger().info("§c箱子锁插件已卸载，交流群: 943446220");
+		// 控制台输出（将 § 颜色代码转换为 ANSI）
+		getLogger().info(convertToAnsi("§c箱子锁插件已卸载，交流群: 943446220"));
+	}
+	
+	/**
+	 * 将 § 颜色代码转换为 ANSI 颜色代码
+	 */
+	private String convertToAnsi(String message) {
+		return message.replace("§0", "\u001B[30m")
+					  .replace("§1", "\u001B[34m")
+					  .replace("§2", "\u001B[32m")
+					  .replace("§3", "\u001B[36m")
+					  .replace("§4", "\u001B[31m")
+					  .replace("§5", "\u001B[35m")
+					  .replace("§6", "\u001B[33m")
+					  .replace("§7", "\u001B[37m")
+					  .replace("§8", "\u001B[90m")
+					  .replace("§9", "\u001B[94m")
+					  .replace("§a", "\u001B[92m")
+					  .replace("§b", "\u001B[96m")
+					  .replace("§c", "\u001B[91m")
+					  .replace("§d", "\u001B[95m")
+					  .replace("§e", "\u001B[93m")
+					  .replace("§f", "\u001B[97m")
+					  .replace("§r", "\u001B[0m")
+					  + "\u001B[0m";
 	}
 	
 	/**
