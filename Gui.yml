@@ -3,8 +3,11 @@
 Rongqi: 
     # 箱子管理Gui标题
     name: "&d容器管理"
+    # 唯一名称，不能重复
     Alone:
+        # 物品ID
         material: PLAYER_HEAD
+        # 所在位置，不能超过 26 格，从0开始计算
         slot: 10
         # 名称
         name: "&b独立权限"
