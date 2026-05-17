@@ -1,5 +1,6 @@
 package mian.xlingran;
 
+import org.bukkit.ChatColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Material;
 import org.bukkit.block.Block;
@@ -107,7 +108,7 @@ public class Shan extends JavaPlugin implements Listener {
 		loadChestData();
 		
 		// 控制台输出（将 § 颜色代码转换为 ANSI）
-		getLogger().info(convertToAnsi("§a欢迎使用 §b箱子锁 §a插件，交流群: 943446220"));
+		Bukkit.getConsoleSender().sendMessage(ChatColor.GREEN + "欢迎使用寄寄の家 " + ChatColor.AQUA + "箱子锁" + ChatColor.GREEN + " 插件,交流群: 943446220"));
 	}
 	
 	@Override
@@ -115,7 +116,7 @@ public class Shan extends JavaPlugin implements Listener {
 		// 保存
 		saveChestData();
 		// 控制台输出（将 § 颜色代码转换为 ANSI）
-		getLogger().info(convertToAnsi("§c箱子锁插件已卸载，交流群: 943446220"));
+		Bukkit.getConsoleSender().sendMessage(ChatColor.RED + "插件 " + ChatColor.AQUA + "箱子锁" + ChatColor.RED + " 已卸载，感谢使用寄寄の家插件!"));
 	}
 	
 	/**
